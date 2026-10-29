@@ -1,8 +1,8 @@
 <!doctype html>
 <html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Appmenu</title>
-<link rel="stylesheet" href="style.css"></head><body>
-<div class="win"><header class="top"><div class="logo"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="2"/><rect x="14" y="3" width="7" height="7" rx="2"/><rect x="3" y="14" width="7" height="7" rx="2"/><path d="M17.5 14v7M14 17.5h7"/></svg>appmenu</div><div class="sub">Windows</div><div class="sp"></div><div class="loc" id="loc"></div><button class="ib" id="th" title="Hell/Dunkel"></button><button class="ib" id="st" title="Einstellungen"></button></header>
+<link rel="stylesheet" href="style.css"><link rel="stylesheet" href="window.css"></head><body>
+<div class="win"><header class="top" id="topbar"><div class="logo"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="2"/><rect x="14" y="3" width="7" height="7" rx="2"/><rect x="3" y="14" width="7" height="7" rx="2"/><path d="M17.5 14v7M14 17.5h7"/></svg>appmenu</div><div class="sub">Windows</div><div class="sp"></div><div class="loc" id="loc"></div><button class="ib" id="th" title="Hell/Dunkel"></button><button class="ib" id="st" title="Einstellungen"></button><button class="ib wc" id="wmin" title="Minimieren" hidden><svg viewBox="0 0 24 24" style="width:14px;height:14px"><path d="M5 12h14"/></svg></button><button class="ib wc" id="wmax" title="Maximieren" hidden><svg viewBox="0 0 24 24" style="width:14px;height:14px"><rect x="5" y="5" width="14" height="14" rx="2"/></svg></button><button class="ib wc x" id="wcls" title="Schließen" hidden><svg viewBox="0 0 24 24" style="width:14px;height:14px"><path d="M6 6l12 12M18 6L6 18"/></svg></button></header>
 <div class="body"><nav id="nav"></nav><main id="main"></main></div>
 <footer><span>Appmenu · Glass 01</span><span>Suchen <kbd>Strg K</kbd> · Hilfe <kbd>?</kbd></span><span>Mattes Glas</span></footer></div>
 <div class="toast" id="toast"></div><div id="mod"></div>
-<script src="app.js"></script></body></html>
+<script src="app.js"></script><script src="window.js"></script></body></html>
