@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Sicherheitslücke
+    url: https://github.com/erwintwin31-lab/appmenu/blob/main/SECURITY.md
+    about: Bitte Sicherheitsprobleme nicht öffentlich melden.

@@ -1,0 +1,19 @@
+name: Bug report
+description: Melde einen Fehler in Appmenu.
+labels: [bug]
+body:
+  - type: textarea
+    id: description
+    attributes: {label: Beschreibung, description: Was funktioniert nicht?}
+    validations: {required: true}
+  - type: textarea
+    id: steps
+    attributes: {label: Schritte, description: Wie kann der Fehler reproduziert werden?}
+    validations: {required: true}
+  - type: dropdown
+    id: platform
+    attributes: {label: Plattform, options: [Linux, Windows, Beide]}
+    validations: {required: true}
+  - type: textarea
+    id: logs
+    attributes: {label: Logs, description: Fehlermeldungen oder Logs, falls vorhanden}
