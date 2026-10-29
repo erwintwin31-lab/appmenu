@@ -1,0 +1,20 @@
+/* Themes und Layouts (Issue #14). Wird nach style.css und window.css geladen. */
+body[data-plat=linux]:not(.light){--bg:#0d1218;--win:#161c25;--panel:#1c232e;--line:#ffffff14;--text:#e8edf4;--mute:#9aa6b6}
+body[data-plat=linux].light{--bg:#e6ebf1;--win:#f6f8fb;--panel:#ffffff;--line:#00000016;--text:#18202b;--mute:#5d6b7c}
+body[data-plat=linux]{background:radial-gradient(1200px 600px at 20% -10%,color-mix(in srgb,var(--accent) 22%,#0000),transparent),var(--bg)}
+body[data-plat=linux] .nv.on{background:var(--asoft);box-shadow:inset 0 0 0 1px var(--aline)}
+body[data-plat=linux] .nv .n{background:var(--asoft);color:var(--at);padding:1px 8px;border-radius:99px}
+body[data-layout=klassisch] .body{grid-template-columns:230px 1fr}
+body[data-layout=klassisch] nav{padding:14px 12px;gap:3px}
+body[data-layout=klassisch] .nv{color:var(--mute)}
+body[data-layout=klassisch] .nv:hover{color:var(--text)}
+body[data-layout=klassisch] .nv.on{background:var(--asoft);color:var(--text);box-shadow:inset 0 0 0 1px var(--aline)}
+.tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px}
+.tiles .pin{padding:18px 8px;transition:.18s}
+.tiles .pin:hover{transform:translateY(-2px)}
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:14px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:16px;text-align:left;transition:.18s}
+button.card:hover{border-color:var(--aline);transform:translateY(-2px)}
+.card b{display:block;margin-bottom:4px}
+.card small{color:var(--mute);font-size:12.5px;line-height:1.45;display:block}
+@media(max-width:700px){body[data-layout=klassisch] .body{grid-template-columns:1fr}body[data-layout=klassisch] nav{padding:8px}}
