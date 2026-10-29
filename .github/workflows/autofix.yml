@@ -1,0 +1,33 @@
+name: Autofix
+on:
+  push:
+    branches: ['chore/**']
+permissions:
+  contents: write
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt
+      - name: rustfmt
+        run: cargo fmt --all
+        working-directory: src-tauri
+      - name: npm Lockdatei
+        run: '[ -f package-lock.json ] || npm install --package-lock-only --ignore-scripts'
+      - name: Cargo Lockdatei
+        run: '[ -f Cargo.lock ] || cargo generate-lockfile'
+        working-directory: src-tauri
+      - name: Commit
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A src-tauri/src
+          [ -f package-lock.json ] && git add -f package-lock.json || true
+          [ -f src-tauri/Cargo.lock ] && git add -f src-tauri/Cargo.lock || true
+          if git diff --cached --quiet; then echo "Nichts zu korrigieren"; else git commit -m "chore: autofix (rustfmt, lockfiles)" && git push; fi
