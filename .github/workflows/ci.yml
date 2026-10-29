@@ -17,7 +17,31 @@ jobs:
       - run: npm run check --if-present
       - run: npm test --if-present
       - run: npm audit --audit-level=high
+  assets:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - name: Icons und Installer-Bilder erzeugen
+        shell: pwsh
+        run: |
+          ./scripts/make-assets.ps1
+          npx tauri icon src-tauri/app-icon.png -o src-tauri/icons
+          New-Item -ItemType Directory -Force -Path assets-out | Out-Null
+          Copy-Item src-tauri/icons assets-out/icons -Recurse
+          Copy-Item src-tauri/installer assets-out/installer -Recurse
+          Copy-Item src-tauri/app-icon.png assets-out/app-icon.png
+      - uses: actions/upload-artifact@v4
+        with:
+          name: assets
+          path: assets-out
+          if-no-files-found: error
   rust:
+    needs: [assets]
     strategy:
       fail-fast: false
       matrix:
@@ -25,6 +49,10 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: assets
+          path: src-tauri
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: rustfmt, clippy
@@ -46,13 +74,17 @@ jobs:
       matrix:
         include:
           - os: ubuntu-latest
-            args: "--target x86_64-unknown-linux-gnu"
+            args: "--target x86_64-unknown-linux-gnu --bundles deb"
           - os: windows-latest
             args: ""
     runs-on: ${{ matrix.os }}
-    needs: [web, rust]
+    needs: [web, assets, rust]
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: assets
+          path: src-tauri
       - uses: actions/setup-node@v4
         with:
           node-version: 20
@@ -71,7 +103,7 @@ jobs:
           args: ${{ matrix.args }}
   gate:
     if: always()
-    needs: [web, rust, build]
+    needs: [web, assets, rust, build]
     runs-on: ubuntu-latest
     steps:
       - name: Alle Jobs muessen erfolgreich sein
@@ -80,7 +112,7 @@ jobs:
       - run: echo "All required CI jobs passed."
   report:
     if: ${{ failure() && github.event_name == 'pull_request' }}
-    needs: [web, rust, build]
+    needs: [web, assets, rust, build]
     runs-on: ubuntu-latest
     permissions:
       actions: read

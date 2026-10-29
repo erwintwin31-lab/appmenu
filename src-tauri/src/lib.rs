@@ -27,7 +27,7 @@ struct AppState {
 }
 
 fn hex(b: &[u8]) -> String {
-    b.iter().map(|x| format!("{:02x}", x)).collect()
+    b.iter().map(|x| format!("{x:02x}")).collect()
 }
 
 fn new_id() -> String {
@@ -42,6 +42,7 @@ fn new_id() -> String {
 }
 
 fn hidden(program: &str) -> Command {
+    #[cfg_attr(not(windows), allow(unused_mut))]
     let mut c = Command::new(program);
     #[cfg(windows)]
     {
@@ -51,10 +52,7 @@ fn hidden(program: &str) -> Command {
 }
 
 fn valid_id(s: &str) -> bool {
-    let first_ok = s
-        .chars()
-        .next()
-        .map_or(false, |c| c.is_ascii_alphanumeric());
+    let first_ok = s.starts_with(|c: char| c.is_ascii_alphanumeric());
     first_ok
         && s.len() <= 100
         && s.chars()
@@ -232,7 +230,7 @@ async fn info() -> Result<Value, String> {
             "pc": env_or("COMPUTERNAME"),
             "elevation": elev,
             "winget": w.is_some(),
-            "wingetVersion": w.clone().map(|v| format!("winget {}", v)).unwrap_or_default(),
+            "wingetVersion": w.clone().map(|v| format!("winget {v}")).unwrap_or_default(),
             "caps": caps(elev, w.is_some()),
         })
     })
@@ -320,7 +318,7 @@ fn flush(acc: &mut Vec<u8>, job: &Arc<Mutex<Job>>) {
         return;
     }
     if let Ok(mut j) = job.lock() {
-        if j.lines.last().map_or(false, |l| l == t) {
+        if j.lines.last().is_some_and(|l| l == t) {
             return;
         }
         j.lines.push(t.to_string());
@@ -353,7 +351,7 @@ fn pump<R: Read + Send + 'static>(mut r: R, job: Arc<Mutex<Job>>) -> std::thread
 
 fn run_install(ids: Vec<String>, job: Arc<Mutex<Job>>) {
     for id in ids {
-        push(&job, format!("== {} ==", id));
+        push(&job, format!("== {id} =="));
         let child = hidden("winget")
             .args([
                 "install",
@@ -385,7 +383,7 @@ fn run_install(ids: Vec<String>, job: Arc<Mutex<Job>>) {
                 code
             }
             Err(e) => {
-                push(&job, format!("winget konnte nicht gestartet werden: {}", e));
+                push(&job, format!("winget konnte nicht gestartet werden: {e}"));
                 -1
             }
         };
@@ -394,7 +392,7 @@ fn run_install(ids: Vec<String>, job: Arc<Mutex<Job>>) {
             if code == 0 {
                 "OK".to_string()
             } else {
-                format!("Fehler (Code {})", code)
+                format!("Fehler (Code {code})")
             },
         );
         if let Ok(mut j) = job.lock() {
@@ -529,7 +527,7 @@ fn classify(name: &str) -> (String, Value, Vec<String>) {
         "jpg", "jpeg", "png", "gif", "pdf", "doc", "docx", "xls", "xlsx", "txt", "zip",
     ] {
         for e in ["exe", "msi", "bat", "cmd", "ps1"] {
-            if lower.ends_with(&format!(".{}.{}", d, e)) {
+            if lower.ends_with(&format!(".{d}.{e}")) {
                 warn.push(
                     "Doppelte Dateiendung: Die Datei tarnt sich möglicherweise als anderer Typ."
                         .to_string(),
@@ -629,7 +627,7 @@ fn open(token: String, state: State<'_, AppState>) -> Result<Value, String> {
         Err(e) => match e.raw_os_error() {
             Some(740) => "Das Programm verlangt Administratorrechte. Appmenu startet es nicht und umgeht das nicht.".to_string(),
             Some(1260) => "Eine Gerät/ Richtlinie blockiert dieses Programm. Appmenu umgeht das nicht.".to_string(),
-            _ => format!("Konnte nicht gestartet werden: {}", e),
+            _ => format!("Konnte nicht gestartet werden: {e}"),
         },
     };
     Ok(json!({ "message": message }))
