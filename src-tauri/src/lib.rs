@@ -466,7 +466,7 @@ async fn scan(state: State<'_, AppState>) -> Result<Value, String> {
                 }
             }
         }
-        out.sort_by(|a, b| b.0.cmp(&a.0));
+        out.sort_by_key(|a| std::cmp::Reverse(a.0));
         out.truncate(60);
         out
     })
