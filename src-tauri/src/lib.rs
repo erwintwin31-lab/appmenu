@@ -2,14 +2,14 @@ use serde_json::{json, Value};
 use sha2::{Digest, Sha256};
 use std::collections::HashMap;
 use std::io::Read;
+#[cfg(windows)]
+use std::os::windows::process::CommandExt;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::SystemTime;
 use tauri::State;
-#[cfg(windows)]
-use std::os::windows::process::CommandExt;
 
 static COUNTER: AtomicU64 = AtomicU64::new(1);
 
@@ -51,7 +51,10 @@ fn hidden(program: &str) -> Command {
 }
 
 fn valid_id(s: &str) -> bool {
-    let first_ok = s.chars().next().map_or(false, |c| c.is_ascii_alphanumeric());
+    let first_ok = s
+        .chars()
+        .next()
+        .map_or(false, |c| c.is_ascii_alphanumeric());
     first_ok
         && s.len() <= 100
         && s.chars()
@@ -182,11 +185,20 @@ fn cap_msi() -> Value {
 
 fn caps(elev: &str, winget: bool) -> Value {
     let install = if !winget {
-        cap("unavailable", "Der Windows-Paketdienst (winget) wurde auf diesem Gerät nicht gefunden.")
+        cap(
+            "unavailable",
+            "Der Windows-Paketdienst (winget) wurde auf diesem Gerät nicht gefunden.",
+        )
     } else if elev == "unknown" {
-        cap("limited", "Rechte nicht sicher feststellbar. Installation nur für dein Konto, Ausgang ungewiss.")
+        cap(
+            "limited",
+            "Rechte nicht sicher feststellbar. Installation nur für dein Konto, Ausgang ungewiss.",
+        )
     } else {
-        cap("available", "Installation nur für dein Konto, ohne Administratorrechte.")
+        cap(
+            "available",
+            "Installation nur für dein Konto, ohne Administratorrechte.",
+        )
     };
     json!({
         "search": cap("available", "Die Suche benötigt keine besonderen Rechte."),
@@ -231,12 +243,23 @@ async fn info() -> Result<Value, String> {
 #[tauri::command]
 async fn search(q: String) -> Result<Value, String> {
     let q = q.trim().to_string();
-    if q.is_empty() || q.chars().count() > 80 || q.chars().any(|c| c.is_control()) || q.starts_with('-') {
+    if q.is_empty()
+        || q.chars().count() > 80
+        || q.chars().any(|c| c.is_control())
+        || q.starts_with('-')
+    {
         return Err("Ungültige Suche.".into());
     }
     tauri::async_runtime::spawn_blocking(move || -> Result<Value, String> {
         let out = hidden("winget")
-            .args(["search", "--query", q.as_str(), "--source", "winget", "--accept-source-agreements"])
+            .args([
+                "search",
+                "--query",
+                q.as_str(),
+                "--source",
+                "winget",
+                "--accept-source-agreements",
+            ])
             .output()
             .map_err(|_| "winget wurde nicht gefunden.".to_string())?;
         let lines = clean_lines(&String::from_utf8_lossy(&out.stdout));
@@ -253,10 +276,21 @@ async fn detail(id: String) -> Result<Value, String> {
     }
     tauri::async_runtime::spawn_blocking(move || -> Result<Value, String> {
         let out = hidden("winget")
-            .args(["show", "--id", id.as_str(), "--exact", "--source", "winget", "--accept-source-agreements"])
+            .args([
+                "show",
+                "--id",
+                id.as_str(),
+                "--exact",
+                "--source",
+                "winget",
+                "--accept-source-agreements",
+            ])
             .output()
             .map_err(|_| "winget wurde nicht gefunden.".to_string())?;
-        let lines: Vec<String> = clean_lines(&String::from_utf8_lossy(&out.stdout)).into_iter().take(45).collect();
+        let lines: Vec<String> = clean_lines(&String::from_utf8_lossy(&out.stdout))
+            .into_iter()
+            .take(45)
+            .collect();
         if lines.is_empty() {
             return Err("Keine Details gefunden.".into());
         }
@@ -322,8 +356,16 @@ fn run_install(ids: Vec<String>, job: Arc<Mutex<Job>>) {
         push(&job, format!("== {} ==", id));
         let child = hidden("winget")
             .args([
-                "install", "--id", id.as_str(), "--exact", "--scope", "user", "--source", "winget",
-                "--accept-package-agreements", "--accept-source-agreements",
+                "install",
+                "--id",
+                id.as_str(),
+                "--exact",
+                "--scope",
+                "user",
+                "--source",
+                "winget",
+                "--accept-package-agreements",
+                "--accept-source-agreements",
             ])
             .stdin(Stdio::null())
             .stdout(Stdio::piped())
@@ -347,7 +389,14 @@ fn run_install(ids: Vec<String>, job: Arc<Mutex<Job>>) {
                 -1
             }
         };
-        push(&job, if code == 0 { "OK".to_string() } else { format!("Fehler (Code {})", code) });
+        push(
+            &job,
+            if code == 0 {
+                "OK".to_string()
+            } else {
+                format!("Fehler (Code {})", code)
+            },
+        );
         if let Ok(mut j) = job.lock() {
             j.codes.push(code);
         }
@@ -410,7 +459,10 @@ async fn scan(state: State<'_, AppState>) -> Result<Value, String> {
                     let p = e.path();
                     let ext = ext_of(&p);
                     if (ext == "exe" || ext == "msi") && p.is_file() {
-                        let m = e.metadata().and_then(|m| m.modified()).unwrap_or(SystemTime::UNIX_EPOCH);
+                        let m = e
+                            .metadata()
+                            .and_then(|m| m.modified())
+                            .unwrap_or(SystemTime::UNIX_EPOCH);
                         out.push((m, p));
                     }
                 }
@@ -423,7 +475,10 @@ async fn scan(state: State<'_, AppState>) -> Result<Value, String> {
     .await
     .map_err(|e| e.to_string())?;
     let mut list = vec![];
-    let mut map = state.files.lock().map_err(|_| "Interner Fehler.".to_string())?;
+    let mut map = state
+        .files
+        .lock()
+        .map_err(|_| "Interner Fehler.".to_string())?;
     for (_, p) in found {
         let t = new_id();
         list.push(json!({
@@ -451,7 +506,11 @@ async fn pick(state: State<'_, AppState>) -> Result<Value, String> {
     match chosen {
         Some(p) => {
             let t = new_id();
-            let name = p.file_name().and_then(|n| n.to_str()).unwrap_or("").to_string();
+            let name = p
+                .file_name()
+                .and_then(|n| n.to_str())
+                .unwrap_or("")
+                .to_string();
             state
                 .files
                 .lock()
@@ -466,17 +525,26 @@ async fn pick(state: State<'_, AppState>) -> Result<Value, String> {
 fn classify(name: &str) -> (String, Value, Vec<String>) {
     let lower = name.to_lowercase();
     let mut warn = vec![];
-    for d in ["jpg", "jpeg", "png", "gif", "pdf", "doc", "docx", "xls", "xlsx", "txt", "zip"] {
+    for d in [
+        "jpg", "jpeg", "png", "gif", "pdf", "doc", "docx", "xls", "xlsx", "txt", "zip",
+    ] {
         for e in ["exe", "msi", "bat", "cmd", "ps1"] {
             if lower.ends_with(&format!(".{}.{}", d, e)) {
-                warn.push("Doppelte Dateiendung: Die Datei tarnt sich möglicherweise als anderer Typ.".to_string());
+                warn.push(
+                    "Doppelte Dateiendung: Die Datei tarnt sich möglicherweise als anderer Typ."
+                        .to_string(),
+                );
             }
         }
     }
     let ext = lower.rsplit('.').next().unwrap_or("");
     match ext {
         "exe" => ("Programm (EXE)".to_string(), cap_exe(), warn),
-        "msi" => ("Windows-Installationspaket (MSI)".to_string(), cap_msi(), warn),
+        "msi" => (
+            "Windows-Installationspaket (MSI)".to_string(),
+            cap_msi(),
+            warn,
+        ),
         "ps1" | "bat" | "cmd" | "vbs" | "js" | "wsf" => (
             "Skript".to_string(),
             cap("unavailable", "Skripte führt Appmenu nicht aus."),
@@ -494,7 +562,11 @@ fn classify(name: &str) -> (String, Value, Vec<String>) {
 async fn file_info(token: String, state: State<'_, AppState>) -> Result<Value, String> {
     let p = get_path(&state, &token)?;
     tauri::async_runtime::spawn_blocking(move || -> Result<Value, String> {
-        let name = p.file_name().and_then(|n| n.to_str()).unwrap_or("").to_string();
+        let name = p
+            .file_name()
+            .and_then(|n| n.to_str())
+            .unwrap_or("")
+            .to_string();
         let (kind, capv, warnings) = classify(&name);
         let size = std::fs::metadata(&p).map(|m| m.len()).unwrap_or(0);
         #[cfg(windows)]
@@ -566,7 +638,9 @@ fn open(token: String, state: State<'_, AppState>) -> Result<Value, String> {
 pub fn run() {
     tauri::Builder::default()
         .manage(AppState::default())
-        .invoke_handler(tauri::generate_handler![info, search, detail, install, job, scan, pick, file_info, hash, open])
+        .invoke_handler(tauri::generate_handler![
+            info, search, detail, install, job, scan, pick, file_info, hash, open
+        ])
         .run(tauri::generate_context!())
         .expect("Fehler beim Start von Appmenu");
 }
