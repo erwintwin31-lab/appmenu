@@ -1,0 +1,141 @@
+name: CI
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+jobs:
+  web:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npm run check --if-present
+      - run: npm test --if-present
+      - run: npm audit --audit-level=high
+  assets:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - name: Icons und Installer-Bilder erzeugen
+        shell: pwsh
+        run: |
+          ./scripts/make-assets.ps1
+          npx tauri icon src-tauri/app-icon.png -o src-tauri/icons
+          New-Item -ItemType Directory -Force -Path assets-out | Out-Null
+          Copy-Item src-tauri/icons assets-out/icons -Recurse
+          Copy-Item src-tauri/installer assets-out/installer -Recurse
+          Copy-Item src-tauri/app-icon.png assets-out/app-icon.png
+      - uses: actions/upload-artifact@v4
+        with:
+          name: assets
+          path: assets-out
+          if-no-files-found: error
+  rust:
+    needs: [assets]
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: assets
+          path: src-tauri
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+      - name: Linux-Abhaengigkeiten
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y libwebkit2gtk-4.1-dev libgtk-3-dev libayatana-appindicator3-dev librsvg2-dev
+      - run: cargo fmt --all -- --check
+        working-directory: src-tauri
+      - run: cargo clippy --all-targets -- -D warnings
+        working-directory: src-tauri
+      - run: cargo test --all
+        working-directory: src-tauri
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            args: "--target x86_64-unknown-linux-gnu --bundles deb"
+          - os: windows-latest
+            args: ""
+    runs-on: ${{ matrix.os }}
+    needs: [web, assets, rust]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: assets
+          path: src-tauri
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+      - run: sudo apt-get update && sudo apt-get install -y libwebkit2gtk-4.1-dev libgtk-3-dev libayatana-appindicator3-dev librsvg2-dev
+        if: runner.os == 'Linux'
+      - run: npm ci
+      - uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          args: ${{ matrix.args }}
+  gate:
+    if: always()
+    needs: [web, assets, rust, build]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Alle Jobs muessen erfolgreich sein
+        if: ${{ contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled') || contains(needs.*.result, 'skipped') }}
+        run: exit 1
+      - run: echo "All required CI jobs passed."
+  report:
+    if: ${{ failure() && github.event_name == 'pull_request' }}
+    needs: [web, assets, rust, build]
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: actions/github-script@v7
+        with:
+          script: |
+            const {owner, repo} = context.repo;
+            const jobs = await github.paginate(github.rest.actions.listJobsForWorkflowRun, {owner, repo, run_id: context.runId, per_page: 100});
+            const fence = '```';
+            let out = '';
+            for (const j of jobs.filter(x => x.conclusion === 'failure')) {
+              const step = (j.steps || []).find(s => s.conclusion === 'failure');
+              let tail = '(Log nicht abrufbar)';
+              try {
+                const r = await github.rest.actions.downloadJobLogsForWorkflowRun({owner, repo, job_id: j.id});
+                tail = String(r.data).split('\n').slice(-60).join('\n');
+              } catch (e) {
+                tail = 'Log-Abruf fehlgeschlagen: ' + e.message;
+              }
+              out += '### ' + j.name + ' - fehlgeschlagener Schritt: ' + (step ? step.name : 'unbekannt') + '\n' + fence + '\n' + tail + '\n' + fence + '\n\n';
+            }
+            const body = 'CI-Fehlerbericht fuer Commit ' + context.sha.slice(0, 7) + '\n\n' + out;
+            await github.rest.issues.createComment({owner, repo, issue_number: context.issue.number, body: body.slice(0, 60000)});

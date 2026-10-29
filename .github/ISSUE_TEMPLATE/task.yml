@@ -1,0 +1,16 @@
+name: Task / Feature
+description: Neue Funktion oder Verbesserung.
+labels: [enhancement]
+body:
+  - type: textarea
+    id: goal
+    attributes: {label: Ziel, description: Was soll erreicht werden?}
+    validations: {required: true}
+  - type: textarea
+    id: acceptance
+    attributes: {label: Akzeptanzkriterien, description: Wann gilt die Aufgabe als erledigt?}
+    validations: {required: true}
+  - type: dropdown
+    id: platform
+    attributes: {label: Plattform, options: [Linux, Windows, Beide]}
+    validations: {required: true}
