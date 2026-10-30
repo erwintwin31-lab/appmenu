@@ -1,0 +1,90 @@
+/* Appmenu: eigenständige, automatisch ausblendbare Dock-Navigation */
+
+body[data-mode="dock"] .body {
+  grid-template-columns: 1fr;
+  grid-template-rows: minmax(0, 1fr) auto;
+}
+
+body[data-mode="dock"] main {
+  order: 1;
+}
+
+body[data-mode="dock"] nav {
+  order: 2;
+  display: block;
+  border: 0;
+  border-top: 0;
+  padding: 6px 10px;
+  background: transparent;
+  transition: transform 0.28s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.22s ease;
+}
+
+.dock {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  margin: 0 auto;
+  padding: 4px 6px;
+  border: 1px solid var(--frost-glass-border, rgba(255, 255, 255, 0.18));
+  border-radius: 16px;
+  background: var(--frost-glass-bg, rgba(255, 255, 255, 0.10));
+  backdrop-filter: blur(18px) saturate(140%);
+  -webkit-backdrop-filter: blur(18px) saturate(140%);
+}
+
+.dock .dock-item {
+  min-width: 0;
+  min-height: 0;
+  padding: 6px 8px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  box-shadow: none;
+  color: var(--text);
+  font-size: 12px;
+}
+
+.dock .dock-item svg {
+  width: 18px;
+  height: 18px;
+  color: var(--at);
+  transition: transform 0.22s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.dock .dock-item span {
+  display: inline-block;
+  transform-origin: center;
+}
+
+.dock .dock-item:hover,
+.dock .dock-item.on {
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.dock .dock-item:hover svg {
+  transform: scale(1.1);
+}
+
+.dock .dock-item:hover span {
+  animation: dock-letter-pop 0.38s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes dock-letter-pop {
+  0% { transform: scale(1); }
+  45% { transform: scale(1.12); }
+  100% { transform: scale(1); }
+}
+
+/* Windows-artiges automatisches Ausblenden */
+body.dock-hidden nav {
+  transform: translateY(calc(100% - 4px));
+  opacity: 0.25;
+}
+
+body.dock-hidden nav:hover {
+  transform: none;
+  opacity: 1;
+}
