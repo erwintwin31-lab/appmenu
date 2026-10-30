@@ -88,3 +88,8 @@ body.dock-hidden nav:hover {
   transform: none;
   opacity: 1;
 }
+
+/* Dock im geöffneten KI-Chat ausblenden */
+body.frost-chat-open nav {
+  display: none !important;
+}
