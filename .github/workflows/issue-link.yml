@@ -8,7 +8,8 @@ jobs:
     steps:
       - name: Dependabot ausgenommen
         if: github.event.pull_request.user.login == 'dependabot[bot]'
-        run: echo "Dependabot-PR: kein Issue erforderlich."
+        run: |
+          echo "Dependabot-PR: kein Issue erforderlich."
       - name: Issue pruefen
         if: github.event.pull_request.user.login != 'dependabot[bot]'
         uses: actions/github-script@v9
