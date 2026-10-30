@@ -1,6 +1,11 @@
 (function(){
 var NL=String.fromCharCode(10);
 var sleep=function(ms){return new Promise(function(r){setTimeout(r,ms)})};
+var AI={model:'lokal-klein',ram:4,ctx:4096,temp:0.2,web:true};
+var AIM={ 'lokal-klein':['Lokal · Klein','2–4 GB RAM'], 'lokal-mittel':['Lokal · Mittel','6–8 GB RAM'], 'cloud':['Cloud · optional','Extern'] };
+try{var s=JSON.parse(localStorage.getItem('am_ai_v1')||'{}');if(AIM[s.model])AI.model=s.model;if(Number.isFinite(s.ram))AI.ram=Math.max(1,Math.min(32,s.ram));if(Number.isFinite(s.ctx))AI.ctx=Math.max(512,Math.min(32768,s.ctx));if(Number.isFinite(s.temp))AI.temp=Math.max(0,Math.min(1,s.temp));if(typeof s.web==='boolean')AI.web=s.web}catch(e){}
+function saveAI(){try{localStorage.setItem('am_ai_v1',JSON.stringify(AI))}catch(e){}}
+window.edAI=function(k,v){if(!(k in AI))return;AI[k]=k==='model'?v:(k==='web'?!!v:Number(v));if(k==='ram')AI.ram=Math.max(1,Math.min(32,AI.ram));if(k==='ctx')AI.ctx=Math.max(512,Math.min(32768,AI.ctx));if(k==='temp')AI.temp=Math.max(0,Math.min(1,AI.temp));saveAI();draw()};
 var DB={
  '7zip.7zip':{nm:'7-Zip',ver:'24.08',pub:'Igor Pavlov',lic:'LGPL',home:'https://www.7-zip.org/',desc:'ein freier Datei-Packer mit hoher Kompression für ZIP, 7z, TAR und weitere Formate',kw:['7zip','7-zip','zip','packer','archiv','archive','entpack']},
  'VideoLAN.VLC':{nm:'VLC media player',ver:'3.0.21',pub:'VideoLAN',lic:'GPL',home:'https://www.videolan.org/',desc:'ein freier Medienplayer, der die meisten Audio- und Videoformate ohne zusätzliche Codecs abspielt',kw:['vlc','video','player','film','musik','media']},
@@ -11,7 +16,7 @@ var DB={
  'Python.Python.3.12':{nm:'Python 3.12',ver:'3.12.7',pub:'Python Software Foundation',lic:'PSF-Lizenz',home:'https://www.python.org/',desc:'die Programmiersprache Python in Version 3.12',kw:['python','programmier','skript']},
  'OBSProject.OBSStudio':{nm:'OBS Studio',ver:'30.2.3',pub:'OBS Project',lic:'GPL-2.0',home:'https://obsproject.com/',desc:'eine freie Software zum Aufnehmen und Streamen von Video',kw:['obs','stream','aufnahme','record','twitch']},
  'Audacity.Audacity':{nm:'Audacity',ver:'3.7.0',pub:'Audacity Team',lic:'GPL-3.0',home:'https://www.audacityteam.org/',desc:'ein freier Audio-Editor zum Aufnehmen und Bearbeiten von Ton',kw:['audacity','audio','ton','sound','mikrofon']},
- 'GIMP.GIMP':{nm:'GIMP',ver:'2.10.38',pub:'GIMP Team',lic:'GPL-3.0',home:'https://www.gimp.org/',desc:'ein freies Bildbearbeitungsprogramm',kw:['gimp','bild','foto','grafik','image']}
+ 'GIMP.GIMP':{nm:'GIMP',ver:'2.10.38',pub:'GIMP Team',lic:'GPL-2.10',home:'https://www.gimp.org/',desc:'ein freies Bildbearbeitungsprogramm',kw:['gimp','bild','foto','grafik','image']}
 };
 MOCKDB.length=0;
 Object.keys(DB).forEach(function(id){MOCKDB.push({id:id,nm:DB[id].nm,ver:DB[id].ver})});
@@ -22,7 +27,8 @@ var FAQ=[
  {re:/winget/i,a:'winget ist der Paketmanager von Windows (App-Installer). Appmenu nutzt ihn zum Suchen und Installieren. Auf Geräten ohne winget bleibt die Suche leer, die Dateiprüfung funktioniert weiter.',s:['winget','Appmenu · Einstellungen']},
  {re:/sicher|vertrau|virus|malware/i,a:'Appmenu zeigt dir Herkunft, die Angaben aus dem winget-Manifest und Warnungen bei verdächtigen Dateien. Diese Hinweise ersetzen nicht deine eigene Prüfung: Du bestätigst jede Installation selbst.',s:['Appmenu · Quellen prüfen']},
  {re:/linux|arch|debian|ubuntu|fedora|suse/i,a:'Appmenu gibt es als frühe Vorschau auch für Linux (AppImage und deb). Die Installationsfunktionen über winget sind dort noch nicht verfügbar.',s:['Appmenu · Plattformen']},
- {re:/theme|layout|farbe|design|dunkel/i,a:'Unter Einstellungen wählst du Hell oder Dunkel, ein Farb-Theme und das Layout: Glass (kompakt mit Gruppenkarten) oder Klassisch (breite Seitenleiste mit Kacheln und Karten).',s:['Appmenu · Einstellungen']}
+ {re:/theme|layout|farbe|design|dunkel|dock/i,a:'Unter Einstellungen wählst du Glass oder Midnight, das Layout Hub, Normal oder Kompakt sowie Reiter oben oder unten. Im Dock-Modus entfallen die zweiten Reiter. Die Highlight-Farbe kannst du über Glas-Blau, Türkis, Violett oder ein eigenes Farbrad festlegen.',s:['Appmenu · Einstellungen']},
+ {re:/ki|ai|modell|ram|speicher|kontext/i,a:'Unter Einstellungen · KI-Übersicht wählst du ein lokales kleines oder mittleres Modell beziehungsweise optional ein Cloud-Modell. Du kannst das RAM-Limit, die Kontextgröße, die Temperatur und den Web-Zugriff festlegen. Die Demo speichert diese Werte nur lokal.',s:['Appmenu · KI-Übersicht']}
 ];
 function findPk(l){var hits=[];Object.keys(DB).forEach(function(id){var d=DB[id],ok=(id+' '+d.nm).toLowerCase().indexOf(l)>=0;d.kw.forEach(function(k){if(l.indexOf(k)>=0||(k.indexOf(l)>=0&&l.length>=3))ok=true});if(ok)hits.push(id)});return hits}
 function answer(q){
@@ -38,9 +44,10 @@ function answer(q){
 }
 var esc2=function(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;')};
 var SPARK=`<svg viewBox='0 0 24 24'><path d='M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z'/><path d='M19 16l.8 2.2L22 19l-2.2.8L19 22l-.8-2.2L16 19l2.2-.8z'/></svg>`;
+function aiMeta(){return `<div class='ai-meta'><span class='ai-chip model'>${esc2(AIM[AI.model][0])}</span><span class='ai-chip'>RAM-Limit ${AI.ram} GB</span><span class='ai-chip'>Kontext ${AI.ctx}</span><span class='ai-chip'>Temp. ${AI.temp}</span><span class='ai-chip ${AI.web?'on':'off'}'>${AI.web?'Webzugriff aktiv':'Kein Webzugriff'}</span></div>`}
 function aiBlock(){
  var a=S.ai;if(!a||!a.q)return '';
- var head=`<div class='ai-h'>${SPARK}<span>KI-Übersicht</span><span class='ai-badge'>Demo</span></div>`;
+ var head=`<div class='ai-h'>${SPARK}<span>KI-Übersicht</span><span class='ai-badge'>Demo</span></div>${aiMeta()}`;
  if(a.phase==='think')return `<div class='ai' id='ai'>${head}<div class='ai-think'><i></i><i></i><i></i><span>Quellen werden gelesen ...</span></div><div class='ai-sk'></div><div class='ai-sk s2'></div><div class='ai-sk s3'></div></div>`;
  var txt=esc2(a.words.slice(0,a.n).join(' '));
  var done=a.phase==='done';
@@ -101,6 +108,14 @@ mock=async function(p,b){
  if(p==='install'){var id='demo'+Date.now();JOBS[id]={t:Date.now(),ids:b.ids.slice()};return{job:id}}
  if(p==='job'){return jobState(b.id)}
  return baseMock(p,b);
+};
+var baseSet=V.set;
+V.set=function(){
+ var h=baseSet();
+ var ai='<h2>KI-Übersicht</h2><div class="ed-options">'+Object.keys(AIM).map(function(k){return '<button class="ed-choice '+(AI.model===k?'active':'')+'" onclick="edAI(\'model\',\''+k+'\')">'+AIM[k][0]+'<small>'+AIM[k][1]+'</small></button>'}).join('')+'</div><div class="ed-grid"><label class="ed-num"><span>RAM-Limit (GB)</span><input type="number" min="1" max="32" value="'+AI.ram+'" onchange="edAI(\'ram\',Number(this.value))"></label><label class="ed-num"><span>Kontextgröße</span><input type="number" min="512" max="32768" step="512" value="'+AI.ctx+'" onchange="edAI(\'ctx\',Number(this.value))"></label><label class="ed-num"><span>Temperatur (0–1)</span><input type="number" min="0" max="1" step="0.1" value="'+AI.temp+'" onchange="edAI(\'temp\',Number(this.value))"></label><label class="ed-check"><input type="checkbox" '+(AI.web?'checked':'')+' onchange="edAI(\'web\',this.checked)"> Webzugriff erlauben</label></div><p class="mute">Demo: Einstellungen werden lokal gespeichert. Ein Cloud-Modell wird nur verwendet, wenn du es auswählst.</p>';
+ var marker='<div class="bar"><button class="btn" onclick="go(\'home\')">';
+ var i=h.indexOf(marker);
+ return i<0?h+ai:h.slice(0,i)+ai+h.slice(i);
 };
 var bn=document.createElement('div');
 bn.className='demo-banner';
