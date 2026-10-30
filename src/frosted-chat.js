@@ -1,7 +1,8 @@
 /* Appmenu: erweiterbarer, simulierter KI-Chat */
 (() => {
   const MAIN = document.getElementById('main');
-  if (!MAIN) return;
+  const WIN = document.querySelector('.win');
+  if (!MAIN || !WIN) return;
 
   let lastQuestion = '';
   let chat = null;
@@ -77,7 +78,7 @@
       setTimeout(() => message('Diese Web-Demo kann Anschlussfragen nur simulieren. In der späteren Appmenu-Version würde hier die passende KI-Antwort erscheinen.'), 350);
     });
 
-    document.body.appendChild(chat);
+    WIN.appendChild(chat);
     return chat;
   };
 
