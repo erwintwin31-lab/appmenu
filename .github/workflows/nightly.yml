@@ -3,6 +3,11 @@ on:
   schedule:
     - cron: "0 2 * * *"
   workflow_dispatch:
+    inputs:
+      ref:
+        description: "Optional: aelteren Stand nachbauen (Commit-SHA, Branch oder Tag). Leer = aktueller Stand."
+        required: false
+        default: ""
 permissions:
   contents: write
 concurrency:
@@ -16,6 +21,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
         with:
+          ref: ${{ inputs.ref }}
           fetch-depth: 0
       - id: diff
         env:
@@ -45,20 +51,35 @@ jobs:
       version: ${{ steps.create.outputs.version }}
     steps:
       - uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.ref }}
       - id: create
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           RUN_NUMBER: ${{ github.run_number }}
-          SHA: ${{ github.sha }}
+          REF_INPUT: ${{ inputs.ref }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
+          SHA=$(git rev-parse HEAD)
+          SHORT=$(git rev-parse --short=7 HEAD)
           VERSION=$(node -p "require('./src-tauri/tauri.conf.json').version")
-          DATE=$(date -u +%Y-%m-%d)
-          TAG="v${VERSION}-nightly.$(date -u +%Y%m%d).${RUN_NUMBER}"
+          if [ -n "$REF_INPUT" ]; then
+            DATE=$(git show -s --format=%cs HEAD)
+            TAG="v${VERSION}-rebuild.${SHORT}"
+            TITLE="Appmenu Nachbau ${SHORT} vom ${DATE} (ungetestet)"
+            HEADLINE="**NACHBAU eines aelteren Standes (Commit ${SHORT} vom ${DATE}), UNGETESTET.**"
+            INTRO="Dieser Build wurde nachtraeglich von Hand aus einem aelteren Commit erzeugt. Er wurde nicht getestet und ist nicht fuer den produktiven Einsatz gedacht. Nutzung auf eigene Gefahr."
+          else
+            DATE=$(date -u +%Y-%m-%d)
+            TAG="v${VERSION}-nightly.$(date -u +%Y%m%d).${RUN_NUMBER}"
+            TITLE="Appmenu Nightly ${DATE} (ungetestet)"
+            HEADLINE="**NIGHTLY-BUILD vom ${DATE}, UNGETESTET.**"
+            INTRO="Dieser Build entsteht automatisch jede Nacht, wenn sich der Code geaendert hat. Er wurde nicht von Hand getestet und ist nicht fuer den produktiven Einsatz gedacht. Nutzung auf eigene Gefahr."
+          fi
           BODY=$(cat <<EOF
-          **NIGHTLY-BUILD vom ${DATE}, UNGETESTET.**
+          ${HEADLINE}
 
-          Dieser Build entsteht automatisch jede Nacht, wenn sich der Code geaendert hat. Er wurde nicht von Hand getestet und ist nicht fuer den produktiven Einsatz gedacht. Nutzung auf eigene Gefahr.
+          ${INTRO}
 
           - Version: ${TAG}
           - Commit: ${SHA}
@@ -70,7 +91,7 @@ jobs:
           )
           ID=$(gh api -X POST "repos/${GITHUB_REPOSITORY}/releases" \
             -f tag_name="$TAG" -f target_commitish="$SHA" \
-            -f name="Appmenu Nightly ${DATE} (ungetestet)" -f body="$BODY" \
+            -f name="$TITLE" -f body="$BODY" \
             -F draft=true -F prerelease=true --jq .id)
           echo "release_id=$ID" >> "$GITHUB_OUTPUT"
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
@@ -81,6 +102,8 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.ref }}
       - uses: actions/setup-node@v7
         with:
           node-version: 20
@@ -115,6 +138,8 @@ jobs:
       APPIMAGE_EXTRACT_AND_RUN: 1
     steps:
       - uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.ref }}
       - uses: actions/download-artifact@v4
         with:
           name: assets
