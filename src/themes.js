@@ -1,5 +1,5 @@
 (function(){
-var skins={glass:'Glass',midnight:'Midnight','frosted-blue':'Frosted Blue',frostly:'Frosted Blue'};
+var skins={glass:'Glass',midnight:'Midnight','frosted-blue':'Frosted Blue'};
 var lays={hub:'Hub',normal:'Normal',compact:'Kompakt'};
 var tabs={top:'Reiter oben',bottom:'Reiter unten'};
 var modes={window:'Fenster',dock:'Dock'};
@@ -10,7 +10,7 @@ Object.assign(ACC,{glas:['Glas-Blau','#1793d1','#8cc4f0'],tuerkis:['Türkis','#1
 var limits={wr:[0,36],cr:[0,32],br:[0,24],ir:[0,24],side:[140,300],pad:[8,48],gap:[4,32],cols:[1,6],hh:[48,100],ps:[18,48],pp:[4,32],opacity:[45,100],blur:[0,40]};
 var hex=v=>typeof v==='string'&&/^#[0-9a-f]{6}$/i.test(v);
 function ids(a){return Array.isArray(a)?Array.from(new Set(a.filter(function(id){return F.some(function(f){return f[0]===id})}))):null}
-function valid(v){v=v||{};var n=Object.assign({},base);Object.keys(base).forEach(function(k){if(limits[k]&&Number.isFinite(v[k]))n[k]=Math.max(limits[k][0],Math.min(limits[k][1],v[k]));else if(typeof base[k]==='boolean'&&typeof v[k]==='boolean')n[k]=v[k]});if(skins[v.surface])n.surface=v.surface;if(lays[v.layout])n.layout=v.layout;if(tabs[v.tabs])n.tabs=v.tabs;if(modes[v.mode])n.mode=v.mode;if(ACC[v.accent])n.accent=v.accent;else if(v.accent==='custom')n.accent='custom';if(hex(v.accentColor))n.accentColor=v.accentColor;n.favorites=ids(v.favorites)||base.favorites.slice();n.groups=Array.isArray(v.groups)?Array.from(new Set(v.groups.filter(function(k){return !!CATS[k]}))):base.groups.slice();n.dock=ids(v.dock)||base.dock.slice();if(n.surface==='frostly')n.surface='frosted-blue';return n}
+function valid(v){v=v||{};var n=Object.assign({},base);Object.keys(base).forEach(function(k){if(limits[k]&&Number.isFinite(v[k]))n[k]=Math.max(limits[k][0],Math.min(limits[k][1],v[k]));else if(typeof base[k]==='boolean'&&typeof v[k]==='boolean')n[k]=v[k]});if(skins[v.surface])n.surface=v.surface;else if(v.surface==='frostly')n.surface='frosted-blue';if(lays[v.layout])n.layout=v.layout;if(tabs[v.tabs])n.tabs=v.tabs;if(modes[v.mode])n.mode=v.mode;if(ACC[v.accent])n.accent=v.accent;else if(v.accent==='custom')n.accent='custom';if(hex(v.accentColor))n.accentColor=v.accentColor;n.favorites=ids(v.favorites)||base.favorites.slice();n.groups=Array.isArray(v.groups)?Array.from(new Set(v.groups.filter(function(k){return !!CATS[k]}))):base.groups.slice();n.dock=ids(v.dock)||base.dock.slice();return n}
 var c=valid({});try{c=valid(JSON.parse(localStorage.getItem('am_editor_v4')))}catch(e){}
 S.acc=c.accent;S.light=c.light;S.fav=c.favorites.slice();
 function save(){try{localStorage.setItem('am_editor_v4',JSON.stringify(c))}catch(e){}}
