@@ -12,7 +12,7 @@ main{padding:var(--ed-pad,26px)}
 .sbar{border-radius:var(--ed-ir,12px)}
 .pin{padding:var(--ed-pp,18px) 6px}.pin svg{width:var(--ed-ps,26px);height:var(--ed-ps,26px)}
 body[data-rounded=false] .win,html.app body[data-rounded=false] .win,body[data-rounded=false] .g,body[data-rounded=false] .row,body[data-rounded=false] button,body[data-rounded=false] .sbar,body[data-rounded=false] .ed-tool,body[data-rounded=false] .box{border-radius:0!important}
-.ed-logo .logo,.ed-subtitle .sub,.ed-footer footer{display:none}
+.ed-subtitle .sub,.ed-footer footer{display:none}
 .ed-footer .win{grid-template-rows:var(--ed-hh,64px) minmax(0,1fr)}
 .ed-icons .body{grid-template-columns:64px minmax(0,1fr)}
 .ed-icons .nv{font-size:0;justify-content:center;gap:0;padding:12px 0}.ed-icons .nv span,.ed-icons .lab,.ed-icons .sess{display:none}
@@ -35,7 +35,8 @@ body[data-tabs=bottom] .lab,body[data-tabs=bottom] .grow,body[data-tabs=bottom] 
 body[data-mode=dock] .body{grid-template-columns:1fr}
 body[data-mode=dock] nav{display:none}
 .ed-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;margin-top:12px}
-.ed-range{display:grid;gap:8px;font-size:13px}.ed-range span{display:flex;justify-content:space-between;color:var(--mute)}.ed-range input{width:100%;accent-color:var(--accent)}
+.ed-num{display:grid;gap:7px;font-size:13px}.ed-num span{color:var(--mute)}.ed-num input{width:100%;padding:10px 12px;background:var(--panel);color:var(--text);border:1px solid var(--line);border-radius:var(--ed-br);font:inherit}
+.ed-num input:focus{outline:none;border-color:var(--aline);box-shadow:0 0 0 3px var(--asoft)}
 .ed-check{display:flex;gap:10px;align-items:center;margin:12px 0;font-size:14px}.ed-check input{accent-color:var(--accent);width:18px;height:18px}
 .ed-options{display:flex;gap:10px;flex-wrap:wrap}.ed-choice{padding:16px 22px;background:var(--panel);border:1px solid var(--line)}.ed-choice.active{border-color:var(--accent);box-shadow:0 0 0 2px var(--asoft)}
 .ed-item{display:flex;align-items:center;gap:8px;padding:8px 12px;border:1px solid var(--line);background:var(--panel);margin:5px 0;border-radius:var(--ed-cr)}.ed-item .sp{flex:1}.ed-item button{padding:5px}
