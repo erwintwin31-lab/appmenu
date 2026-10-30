@@ -8,9 +8,7 @@
 
   const isAiOverview = (node) => {
     if (!(node instanceof HTMLElement)) return false;
-    const text = (node.textContent || '').toLowerCase();
-    const cls = node.className || '';
-    return cls.includes('ai') || cls.includes('overview') || text.includes('ki-übersicht') || text.includes('ki übersicht');
+    return node.classList.contains('ai') || node.classList.contains('ai-overview');
   };
 
   const addMoreButton = (container) => {
@@ -24,8 +22,8 @@
   };
 
   const scanForOverview = () => {
-    MAIN.querySelectorAll('*').forEach((node) => {
-      if (isAiOverview(node) && !node.querySelector('.frost-more')) addMoreButton(node);
+    MAIN.querySelectorAll('.ai, .ai-overview').forEach((node) => {
+      if (!node.querySelector('.frost-more')) addMoreButton(node);
     });
   };
 
@@ -102,7 +100,7 @@
   };
 
   const captureQuestion = () => {
-    const field = document.querySelector('#q, input[type="search"], input[name="q"]');
+    const field = document.querySelector('#qi, #q, input[type="search"], input[name="q"]');
     if (field && field.value.trim()) lastQuestion = field.value.trim();
   };
 
