@@ -2,6 +2,8 @@
 
 A Swiss-army-knife app menu to find, check and install software safely - built for PCs where you have no admin rights.
 
+**[Try the live demo](https://erwintwin31-lab.github.io/appmenu/)** - runs in your browser with simulated data.
+
 ![Appmenu themes](docs/screenshots/themes.png)
 
 > The screenshot shows the demo mode with simulated data. Nothing is installed in the demo.
