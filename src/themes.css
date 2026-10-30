@@ -1,20 +1,40 @@
-/* Themes und Layouts (Issue #14). Wird nach style.css und window.css geladen. */
-body[data-plat=linux]:not(.light){--bg:#0d1218;--win:#161c25;--panel:#1c232e;--line:#ffffff14;--text:#e8edf4;--mute:#9aa6b6}
-body[data-plat=linux].light{--bg:#e6ebf1;--win:#f6f8fb;--panel:#ffffff;--line:#00000016;--text:#18202b;--mute:#5d6b7c}
-body[data-plat=linux]{background:radial-gradient(1200px 600px at 20% -10%,color-mix(in srgb,var(--accent) 22%,#0000),transparent),var(--bg)}
-body[data-plat=linux] .nv.on{background:var(--asoft);box-shadow:inset 0 0 0 1px var(--aline)}
-body[data-plat=linux] .nv .n{background:var(--asoft);color:var(--at);padding:1px 8px;border-radius:99px}
-body[data-layout=klassisch] .body{grid-template-columns:230px 1fr}
-body[data-layout=klassisch] nav{padding:14px 12px;gap:3px}
-body[data-layout=klassisch] .nv{color:var(--mute)}
-body[data-layout=klassisch] .nv:hover{color:var(--text)}
-body[data-layout=klassisch] .nv.on{background:var(--asoft);color:var(--text);box-shadow:inset 0 0 0 1px var(--aline)}
-.tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px}
-.tiles .pin{padding:18px 8px;transition:.18s}
-.tiles .pin:hover{transform:translateY(-2px)}
-.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:14px}
-.card{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:16px;text-align:left;transition:.18s}
-button.card:hover{border-color:var(--aline);transform:translateY(-2px)}
-.card b{display:block;margin-bottom:4px}
-.card small{color:var(--mute);font-size:12.5px;line-height:1.45;display:block}
-@media(max-width:700px){body[data-layout=klassisch] .body{grid-template-columns:1fr}body[data-layout=klassisch] nav{padding:8px}}
+body[data-surface=black]{--bg:#020304;--win:#090b0e;--panel:#13161b;--text:#f4f6fa;--mute:#aab6c6;--line:#ffffff20;--sel:#ffffff14}
+body[data-surface=black].light{--bg:#e0e3e8;--win:#fafafa;--panel:#fff;--text:#12151a;--mute:#596476;--line:#00000024;--sel:#0000000d}
+body[data-surface=frost]{--bg:#163147;--win:#25455b;--panel:#34556b;--text:#effaff;--mute:#c3dce9;--line:#c1eaff38;--sel:#d4f4ff1a}
+body[data-surface=frost].light{--bg:#d1e9f7;--win:#e8f5fc;--panel:#f5fbff;--text:#173a50;--mute:#486f83;--line:#23648730;--sel:#1c71931a}
+body[data-surface=windows]{--bg:#181818;--win:#202020;--panel:#2d2d2d;--text:#fff;--mute:#c4c4c4;--line:#ffffff16;--sel:#ffffff10;font-family:'Segoe UI Variable Text','Segoe UI',system-ui,sans-serif}
+body[data-surface=windows].light{--bg:#dedede;--win:#f3f3f3;--panel:#fff;--text:#1a1a1a;--mute:#616161;--line:#00000012;--sel:#0000000b}
+body[data-surface=windows] .nv{position:relative;border-radius:4px;font-size:14px;min-height:40px}
+body[data-surface=windows] .nv.on:before{content:'';position:absolute;left:0;top:25%;height:50%;width:3px;border-radius:2px;background:var(--accent)}
+body[data-surface=windows] h1{font-weight:600;letter-spacing:-.4px;font-size:28px}
+body[data-surface=windows] .sbar{border-bottom:2px solid var(--mute)}
+body[data-surface=windows] .sbar:focus-within{border-bottom-color:var(--accent);box-shadow:none}
+body[data-surface=windows] .btn{font-weight:400;min-height:32px;padding:5px 14px}
+body{background:radial-gradient(ellipse at 10% 0%,color-mix(in srgb,var(--accent) 14%,transparent),transparent 65%),var(--bg)}
+.win{background:color-mix(in srgb,var(--win) var(--ed-opacity,94%),transparent);backdrop-filter:blur(var(--ed-blur,20px));grid-template-rows:var(--ed-hh,64px) minmax(0,1fr) 36px;border-radius:var(--ed-wr,20px)}
+html.app .win{border-radius:var(--ed-wr,20px)}
+.body{grid-template-columns:var(--ed-side,200px) minmax(0,1fr)}
+main{padding:var(--ed-pad,26px)}
+.groups{grid-template-columns:repeat(var(--ed-cols,4),minmax(0,1fr));gap:var(--ed-gap,14px)}
+.g,.row,.ed-tool{border-radius:var(--ed-cr,14px)}
+.btn,.ib,.chip,.tab,.nv,.ed-choice{border-radius:var(--ed-br,10px)}
+.sbar{border-radius:var(--ed-ir,12px)}
+.pin{padding:var(--ed-pp,18px) 6px}.pin svg{width:var(--ed-ps,26px);height:var(--ed-ps,26px)}
+body[data-rounded=false] .win,html.app body[data-rounded=false] .win,body[data-rounded=false] .g,body[data-rounded=false] .row,body[data-rounded=false] button,body[data-rounded=false] .sbar,body[data-rounded=false] .ed-tool,body[data-rounded=false] .box{border-radius:0!important}
+.ed-logo .logo,.ed-subtitle .sub,.ed-footer footer{display:none}
+.ed-footer .win{grid-template-rows:var(--ed-hh,64px) minmax(0,1fr)}
+.ed-icons .body{grid-template-columns:64px minmax(0,1fr)}
+.ed-icons .nv{font-size:0;justify-content:center;gap:0;padding:12px 0}.ed-icons .nv span,.ed-icons .lab,.ed-icons .sess{display:none}
+.ed-pins{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:var(--ed-gap)}
+.ed-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:var(--ed-gap)}
+.ed-tool{display:flex;gap:14px;align-items:center;padding:22px;background:var(--panel);border:1px solid var(--line)}
+.ed-tool svg{color:var(--at)}.ed-tool b{display:block}.ed-tool small{display:block;color:var(--mute);line-height:1.5;margin-top:5px}
+body[data-layout=compact] .ed-cards{grid-template-columns:1fr}body[data-layout=compact] .ed-tool{padding:10px 14px}body[data-layout=compact] .nv{padding:8px}body[data-layout=compact] .row{padding:8px 12px}body[data-layout=compact] h2{margin-top:20px}
+.ed-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;margin-top:12px}
+.ed-range{display:grid;gap:8px;font-size:13px}.ed-range span{display:flex;justify-content:space-between;color:var(--mute)}.ed-range input{width:100%;accent-color:var(--accent)}
+.ed-check{display:flex;gap:10px;align-items:center;margin:12px 0;font-size:14px}.ed-check input{accent-color:var(--accent);width:18px;height:18px}
+.ed-options{display:flex;gap:10px;flex-wrap:wrap}.ed-choice{padding:16px 22px;background:var(--panel);border:1px solid var(--line)}.ed-choice.active{border-color:var(--accent);box-shadow:0 0 0 2px var(--asoft)}
+.ed-item{display:flex;align-items:center;gap:8px;padding:8px 12px;border:1px solid var(--line);background:var(--panel);margin:5px 0;border-radius:var(--ed-cr)}.ed-item .sp{flex:1}.ed-item button{padding:5px}
+html.app body{background:transparent}
+@media(max-width:900px){.groups{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:700px){.body,.ed-icons .body{grid-template-columns:1fr;grid-template-rows:auto minmax(0,1fr)}.ed-grid{grid-template-columns:1fr}.groups{grid-template-columns:1fr}.ed-cards{grid-template-columns:1fr}}
