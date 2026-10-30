@@ -1,0 +1,26 @@
+.ai{border:1px solid var(--aline);background:linear-gradient(135deg,var(--asoft),transparent);border-radius:16px;padding:16px 18px;margin:16px 0}
+.ai-h{display:flex;align-items:center;gap:8px;font-weight:600;font-size:14px;margin-bottom:10px}
+.ai-h svg{width:18px;height:18px;color:var(--at)}
+.ai-badge{font-size:11px;font-weight:500;padding:2px 8px;border-radius:99px;border:1px solid var(--line);color:var(--mute)}
+.ai-txt{font-size:14px;line-height:1.65}
+.ai-caret{display:inline-block;width:7px;height:15px;margin-left:2px;vertical-align:-2px;background:var(--at);border-radius:2px;animation:aib .8s steps(2) infinite}
+@keyframes aib{50%{opacity:0}}
+.ai-think{display:flex;align-items:center;gap:5px;font-size:13px;color:var(--mute);margin-bottom:12px}
+.ai-think i{width:6px;height:6px;border-radius:50%;background:var(--at);animation:aid 1s ease-in-out infinite}
+.ai-think i:nth-child(2){animation-delay:.15s}
+.ai-think i:nth-child(3){animation-delay:.3s}
+.ai-think span{margin-left:6px}
+@keyframes aid{0%,100%{opacity:.25;transform:translateY(0)}50%{opacity:1;transform:translateY(-3px)}}
+.ai-sk{height:11px;border-radius:6px;margin:8px 0;background:linear-gradient(90deg,var(--line),var(--asoft),var(--line));background-size:200% 100%;animation:ais 1.4s linear infinite}
+.ai-sk.s2{width:86%}
+.ai-sk.s3{width:62%}
+@keyframes ais{to{background-position:-200% 0}}
+.ai-src{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+.ai-chip{font-size:12px;padding:4px 10px;border-radius:99px;border:1px solid var(--line);color:var(--mute);background:var(--tile)}
+.ai-ft{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between;margin-top:12px;font-size:12px;color:var(--mute)}
+.ai-fb{display:flex;gap:6px}
+.ai-fb button{font-size:12px;padding:4px 10px;border-radius:99px;border:1px solid var(--line);color:var(--mute)}
+.ai-fb button:hover{color:var(--text);border-color:var(--aline)}
+.demo-banner{position:fixed;left:12px;bottom:12px;display:flex;align-items:center;gap:12px;padding:7px 8px 7px 14px;font-size:12px;color:var(--mute);background:var(--panel);border:1px solid var(--line);border-radius:99px;z-index:5;box-shadow:0 6px 24px #0005}
+.demo-banner a{color:#fff;background:var(--accent);padding:4px 12px;border-radius:99px;text-decoration:none;font-weight:600}
+@media(max-width:700px){.demo-banner{left:8px;right:8px;bottom:8px;justify-content:space-between}}
