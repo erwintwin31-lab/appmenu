@@ -1,11 +1,5 @@
-/* Appmenu: eigenständige Dock-Navigation mit automatischem Ausblenden */
+/* Appmenu: optionale Dock-Navigation mit automatischem Ausblenden */
 (() => {
-  const enableDock = () => {
-    if (document.body.dataset.mode !== 'dock' && typeof window.edSet === 'function') {
-      window.edSet('mode', 'dock');
-    }
-  };
-
   const setupAutoHide = () => {
     const win = document.querySelector('.win');
     const nav = document.getElementById('nav');
@@ -13,17 +7,32 @@
 
     let hideTimer = null;
 
+    const isDockMode = () => document.body.dataset.mode === 'dock';
+
     const show = () => {
+      if (!isDockMode()) return;
       clearTimeout(hideTimer);
       document.body.classList.remove('dock-hidden');
     };
 
     const scheduleHide = () => {
+      if (!isDockMode()) {
+        document.body.classList.remove('dock-hidden');
+        return;
+      }
+
       clearTimeout(hideTimer);
-      hideTimer = setTimeout(() => document.body.classList.add('dock-hidden'), 900);
+      hideTimer = setTimeout(() => {
+        if (isDockMode()) document.body.classList.add('dock-hidden');
+      }, 900);
     };
 
     document.addEventListener('mousemove', (event) => {
+      if (!isDockMode()) {
+        document.body.classList.remove('dock-hidden');
+        return;
+      }
+
       const rect = win.getBoundingClientRect();
       const nearBottom = event.clientY >= rect.bottom - 56 && event.clientY <= rect.bottom;
       const overNav = nav.contains(event.target);
@@ -37,10 +46,7 @@
     scheduleHide();
   };
 
-  const start = () => {
-    enableDock();
-    setupAutoHide();
-  };
+  const start = () => setupAutoHide();
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start);
   else start();
