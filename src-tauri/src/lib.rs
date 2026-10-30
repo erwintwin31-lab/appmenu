@@ -8,8 +8,12 @@ use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
-use std::time::SystemTime;
+use std::time::{Duration, SystemTime};
 use tauri::State;
+
+mod ai;
+
+use ai::{parse_ollama_tags, recommend_model, validate_quotes, TrustedSource};
 
 static COUNTER: AtomicU64 = AtomicU64::new(1);
 
@@ -633,11 +637,108 @@ fn open(token: String, state: State<'_, AppState>) -> Result<Value, String> {
     Ok(json!({ "message": message }))
 }
 
+#[tauri::command]
+async fn ai_models() -> Result<Value, String> {
+    tauri::async_runtime::spawn_blocking(|| -> Result<Value, String> {
+        let response = reqwest::blocking::Client::builder()
+            .timeout(Duration::from_secs(3))
+            .build()
+            .map_err(|_| "Ollama-Client konnte nicht erstellt werden.".to_string())?
+            .get("http://127.0.0.1:11434/api/tags")
+            .send()
+            .map_err(|_| "Ollama ist nicht erreichbar.".to_string())?;
+
+        if !response.status().is_success() {
+            return Err("Ollama hat einen Fehler gemeldet.".into());
+        }
+
+        let body = response
+            .text()
+            .map_err(|_| "Ollama-Antwort konnte nicht gelesen werden.".to_string())?;
+        let models = parse_ollama_tags(&body)?;
+        Ok(json!({ "models": models }))
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+async fn ai_recommend(available_ram_mb: Option<u64>) -> Result<Value, String> {
+    let models = ai_models().await?;
+    let installed = models
+        .get("models")
+        .and_then(Value::as_array)
+        .map(|items| {
+            items
+                .iter()
+                .filter_map(Value::as_str)
+                .map(str::to_string)
+                .collect::<Vec<_>>()
+        })
+        .unwrap_or_default();
+
+    Ok(recommend_model(available_ram_mb, &installed))
+}
+
+#[tauri::command]
+async fn ai_validate(raw: String, sources: Vec<Value>) -> Result<Value, String> {
+    if sources.len() > 16 {
+        return Err("Zu viele Quellen.".into());
+    }
+
+    let trusted = sources
+        .into_iter()
+        .map(|source| {
+            let id = source
+                .get("id")
+                .and_then(Value::as_u64)
+                .and_then(|id| u32::try_from(id).ok())
+                .ok_or("Ungültige Quellen-ID.")?;
+            let title = source
+                .get("title")
+                .and_then(Value::as_str)
+                .unwrap_or_default()
+                .to_string();
+            let url = source
+                .get("url")
+                .and_then(Value::as_str)
+                .ok_or("Ungültige Quellen-URL.")?
+                .to_string();
+            let text = source
+                .get("text")
+                .and_then(Value::as_str)
+                .ok_or("Ungültiger Quellentext.")?
+                .to_string();
+
+            Ok(TrustedSource {
+                id,
+                title,
+                url,
+                text,
+            })
+        })
+        .collect::<Result<Vec<_>, String>>()?;
+
+    validate_quotes(&raw, &trusted)
+}
+
 pub fn run() {
     tauri::Builder::default()
         .manage(AppState::default())
         .invoke_handler(tauri::generate_handler![
-            info, search, detail, install, job, scan, pick, file_info, hash, open
+            info,
+            search,
+            detail,
+            install,
+            job,
+            scan,
+            pick,
+            file_info,
+            hash,
+            open,
+            ai_models,
+            ai_recommend,
+            ai_validate
         ])
         .run(tauri::generate_context!())
         .expect("Fehler beim Start von Appmenu");
