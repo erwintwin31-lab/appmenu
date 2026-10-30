@@ -11,7 +11,7 @@ var DB={
  'Python.Python.3.12':{nm:'Python 3.12',ver:'3.12.7',pub:'Python Software Foundation',lic:'PSF-Lizenz',home:'https://www.python.org/',desc:'die Programmiersprache Python in Version 3.12',kw:['python','programmier','skript']},
  'OBSProject.OBSStudio':{nm:'OBS Studio',ver:'30.2.3',pub:'OBS Project',lic:'GPL-2.0',home:'https://obsproject.com/',desc:'eine freie Software zum Aufnehmen und Streamen von Video',kw:['obs','stream','aufnahme','record','twitch']},
  'Audacity.Audacity':{nm:'Audacity',ver:'3.7.0',pub:'Audacity Team',lic:'GPL-3.0',home:'https://www.audacityteam.org/',desc:'ein freier Audio-Editor zum Aufnehmen und Bearbeiten von Ton',kw:['audacity','audio','ton','sound','mikrofon']},
- 'GIMP.GIMP':{nm:'GIMP',ver:'2.10.38',pub:'GIMP Team',lic:'GPL-3.0',home:'https://www.gimp.org/',desc:'ein freies Bildbearbeitungsprogramm',kw:['gimp','bild','foto','grafik','image']}
+ 'GIMP.GIMP':{nm:'GIMP',ver:'2.10.38',pub:'GIMP Team',lic:'GPL-2.10',home:'https://www.gimp.org/',desc:'ein freies Bildbearbeitungsprogramm',kw:['gimp','bild','foto','grafik','image']}
 };
 MOCKDB.length=0;
 Object.keys(DB).forEach(function(id){MOCKDB.push({id:id,nm:DB[id].nm,ver:DB[id].ver})});
@@ -22,7 +22,7 @@ var FAQ=[
  {re:/winget/i,a:'winget ist der Paketmanager von Windows (App-Installer). Appmenu nutzt ihn zum Suchen und Installieren. Auf Geräten ohne winget bleibt die Suche leer, die Dateiprüfung funktioniert weiter.',s:['winget','Appmenu · Einstellungen']},
  {re:/sicher|vertrau|virus|malware/i,a:'Appmenu zeigt dir Herkunft, die Angaben aus dem winget-Manifest und Warnungen bei verdächtigen Dateien. Diese Hinweise ersetzen nicht deine eigene Prüfung: Du bestätigst jede Installation selbst.',s:['Appmenu · Quellen prüfen']},
  {re:/linux|arch|debian|ubuntu|fedora|suse/i,a:'Appmenu gibt es als frühe Vorschau auch für Linux (AppImage und deb). Die Installationsfunktionen über winget sind dort noch nicht verfügbar.',s:['Appmenu · Plattformen']},
- {re:/theme|layout|farbe|design|dunkel/i,a:'Unter Einstellungen wählst du Hell oder Dunkel, ein Farb-Theme und das Layout: Glass (kompakt mit Gruppenkarten) oder Klassisch (breite Seitenleiste mit Kacheln und Karten).',s:['Appmenu · Einstellungen']}
+ {re:/theme|layout|farbe|design|dunkel|dock/i,a:'Unter Einstellungen wählst du Glass oder Midnight, das Layout Hub, Normal oder Kompakt sowie Reiter oben oder unten. Im Dock-Modus entfallen die zweiten Reiter. Die Highlight-Farbe kannst du über Glas-Blau, Türkis, Violett oder ein eigenes Farbrad festlegen.',s:['Appmenu · Einstellungen']}
 ];
 function findPk(l){var hits=[];Object.keys(DB).forEach(function(id){var d=DB[id],ok=(id+' '+d.nm).toLowerCase().indexOf(l)>=0;d.kw.forEach(function(k){if(l.indexOf(k)>=0||(k.indexOf(l)>=0&&l.length>=3))ok=true});if(ok)hits.push(id)});return hits}
 function answer(q){
