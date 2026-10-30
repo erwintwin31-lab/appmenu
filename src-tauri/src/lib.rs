@@ -726,8 +726,19 @@ pub fn run() {
     tauri::Builder::default()
         .manage(AppState::default())
         .invoke_handler(tauri::generate_handler![
-            info, search, detail, install, job, scan, pick, file_info, hash, open,
-            ai_models, ai_recommend, ai_validate
+            info,
+            search,
+            detail,
+            install,
+            job,
+            scan,
+            pick,
+            file_info,
+            hash,
+            open,
+            ai_models,
+            ai_recommend,
+            ai_validate
         ])
         .run(tauri::generate_context!())
         .expect("Fehler beim Start von Appmenu");

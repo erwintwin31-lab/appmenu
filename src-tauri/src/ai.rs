@@ -116,7 +116,9 @@ pub fn validate_quotes(raw: &str, sources: &[TrustedSource]) -> Result<Value, St
         );
     }
 
-    let quotes = object["quotes"].as_array().ok_or("Expected a quotes array.")?;
+    let quotes = object["quotes"]
+        .as_array()
+        .ok_or("Expected a quotes array.")?;
 
     if quotes.is_empty() || quotes.len() > 10 {
         return Err("Expected between one and ten quotations.".into());
