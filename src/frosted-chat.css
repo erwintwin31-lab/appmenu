@@ -10,7 +10,7 @@
   --frost-accent: var(--accent, #60a5fa);
 }
 
-html[data-theme="dark"], body[data-theme="dark"] {
+body[data-theme="dark"], html[data-theme="dark"] {
   --frost-glass-bg: rgba(15, 23, 42, 0.42);
   --frost-glass-border: rgba(148, 163, 184, 0.22);
   --frost-blue-bg: rgba(30, 64, 175, 0.30);
@@ -18,7 +18,7 @@ html[data-theme="dark"], body[data-theme="dark"] {
 }
 
 /* Mattes, nicht vollkommen klares Glas */
-.glass, .glass-card, .card, .panel, .dock, .searchbar, .ai-overview {
+.glass, .glass-card, .card, .panel, .dock, .searchbar, .sbar, .ai, .ai-overview {
   backdrop-filter: blur(var(--frost-blur)) saturate(var(--frost-sat));
   -webkit-backdrop-filter: blur(var(--frost-blur)) saturate(var(--frost-sat));
   background: var(--frost-glass-bg);
@@ -26,13 +26,15 @@ html[data-theme="dark"], body[data-theme="dark"] {
   box-shadow: 0 12px 34px rgba(2, 6, 23, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.14);
 }
 
-html[data-theme="frosted-blue"] .glass,
-html[data-theme="frosted-blue"] .glass-card,
-html[data-theme="frosted-blue"] .card,
-html[data-theme="frosted-blue"] .panel,
-html[data-theme="frosted-blue"] .dock,
-html[data-theme="frosted-blue"] .searchbar,
-html[data-theme="frosted-blue"] .ai-overview {
+body[data-surface="frosted-blue"] .glass,
+body[data-surface="frosted-blue"] .glass-card,
+body[data-surface="frosted-blue"] .card,
+body[data-surface="frosted-blue"] .panel,
+body[data-surface="frosted-blue"] .dock,
+body[data-surface="frosted-blue"] .searchbar,
+body[data-surface="frosted-blue"] .sbar,
+body[data-surface="frosted-blue"] .ai,
+body[data-surface="frosted-blue"] .ai-overview {
   background: var(--frost-blue-bg);
   border-color: var(--frost-blue-border);
 }
