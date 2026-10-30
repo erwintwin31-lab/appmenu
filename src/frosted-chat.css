@@ -1,36 +1,33 @@
-/* Appmenu: mattes Glass, Frosted Blue, kompaktes Dock und erweiterbarer KI-Chat */
+/* Appmenu: mattes Glass, Frosted Blue, cleanes Dock und erweiterbarer KI-Chat */
 
 :root {
   --frost-blur: 18px;
   --frost-sat: 140%;
   --frost-glass-bg: rgba(255, 255, 255, 0.10);
-  --frost-glass-border: rgba(255, 255, 255, 0.22);
-  --frost-blue-bg: rgba(96, 165, 250, 0.14);
-  --frost-blue-border: rgba(147, 197, 253, 0.30);
+  --frost-glass-border: rgba(255, 255, 255, 0.18);
+  --frost-blue-bg: rgba(96, 165, 250, 0.12);
+  --frost-blue-border: rgba(147, 197, 253, 0.24);
   --frost-accent: var(--accent, #60a5fa);
 }
 
-body[data-theme="dark"], html[data-theme="dark"] {
-  --frost-glass-bg: rgba(15, 23, 42, 0.42);
-  --frost-glass-border: rgba(148, 163, 184, 0.22);
-  --frost-blue-bg: rgba(30, 64, 175, 0.30);
-  --frost-blue-border: rgba(96, 165, 250, 0.28);
+body[data-surface="frosted-blue"] {
+  --frost-glass-bg: rgba(96, 165, 250, 0.10);
+  --frost-glass-border: rgba(147, 197, 253, 0.20);
 }
 
 /* Mattes, nicht vollkommen klares Glas */
-.glass, .glass-card, .card, .panel, .dock, .searchbar, .sbar, .ai, .ai-overview {
+.glass, .glass-card, .card, .panel, .searchbar, .sbar, .ai, .ai-overview {
   backdrop-filter: blur(var(--frost-blur)) saturate(var(--frost-sat));
   -webkit-backdrop-filter: blur(var(--frost-blur)) saturate(var(--frost-sat));
   background: var(--frost-glass-bg);
   border: 1px solid var(--frost-glass-border);
-  box-shadow: 0 12px 34px rgba(2, 6, 23, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.14);
+  box-shadow: 0 12px 34px rgba(2, 6, 23, 0.16), inset 0 1px 0 rgba(255, 255, 255, 0.12);
 }
 
 body[data-surface="frosted-blue"] .glass,
 body[data-surface="frosted-blue"] .glass-card,
 body[data-surface="frosted-blue"] .card,
 body[data-surface="frosted-blue"] .panel,
-body[data-surface="frosted-blue"] .dock,
 body[data-surface="frosted-blue"] .searchbar,
 body[data-surface="frosted-blue"] .sbar,
 body[data-surface="frosted-blue"] .ai,
@@ -39,29 +36,72 @@ body[data-surface="frosted-blue"] .ai-overview {
   border-color: var(--frost-blue-border);
 }
 
-/* Kompakteres Dock */
+/* Cleanes, halbtransparentes Dock */
+.win {
+  position: relative;
+}
+
+body[data-mode="dock"] nav {
+  background: transparent;
+  border: 0;
+  padding: 8px 12px;
+}
+
 .dock {
-  gap: 6px;
-  padding: 7px;
-  border-radius: 18px;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 4px 6px;
+  border: 1px solid var(--frost-glass-border);
+  border-radius: 16px;
+  background: var(--frost-glass-bg);
+  backdrop-filter: blur(var(--frost-blur)) saturate(var(--frost-sat));
+  -webkit-backdrop-filter: blur(var(--frost-blur)) saturate(var(--frost-sat));
 }
 
-.dock button,
-.dock .dock-item,
-.dock a {
-  min-width: 34px;
-  min-height: 34px;
-  padding: 7px;
-  border-radius: 12px;
-  color: var(--frost-accent);
-  transition: transform 0.18s ease, background 0.18s ease;
+.dock .dock-item {
+  min-width: 0;
+  min-height: 0;
+  padding: 6px 8px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  box-shadow: none;
+  color: var(--text);
+  font-size: 12px;
 }
 
-.dock button:hover,
+.dock .dock-item svg {
+  width: 18px;
+  height: 18px;
+  color: var(--at);
+  transition: transform 0.22s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.dock .dock-item span {
+  display: inline-block;
+  transform-origin: center;
+}
+
 .dock .dock-item:hover,
-.dock a:hover {
-  transform: translateY(-2px);
-  background: color-mix(in srgb, var(--frost-accent) 18%, transparent);
+.dock .dock-item.on {
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.dock .dock-item:hover svg {
+  transform: scale(1.1);
+}
+
+.dock .dock-item:hover span {
+  animation: frost-letter-pop 0.38s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes frost-letter-pop {
+  0% { transform: scale(1); }
+  45% { transform: scale(1.12); }
+  100% { transform: scale(1); }
 }
 
 /* Mehr-dazu-Button unter der KI-Übersicht */
@@ -70,7 +110,7 @@ body[data-surface="frosted-blue"] .ai-overview {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  padding: 9px 14px;
+  padding: 8px 13px;
   border: 1px solid var(--frost-glass-border);
   border-radius: 999px;
   background: var(--frost-glass-bg);
@@ -83,21 +123,23 @@ body[data-surface="frosted-blue"] .ai-overview {
 
 .frost-more:hover {
   transform: translateY(-1px);
-  background: color-mix(in srgb, var(--frost-accent) 16%, transparent);
+  background: color-mix(in srgb, var(--frost-accent) 14%, transparent);
 }
 
-/* Vollflächiger Chat */
+/* Chat in der Größe des Appmenu-Fensters */
 .frost-chat {
-  position: fixed;
+  position: absolute;
   inset: 0;
   z-index: 90;
   display: grid;
   grid-template-rows: auto 1fr auto;
   padding: 18px;
-  background: color-mix(in srgb, var(--frost-glass-bg) 78%, rgba(2, 6, 23, 0.35));
+  border-radius: inherit;
+  overflow: hidden;
+  background: color-mix(in srgb, var(--frost-glass-bg) 78%, rgba(2, 6, 23, 0.32));
   backdrop-filter: blur(28px) saturate(150%);
   opacity: 0;
-  transform: translateY(18px) scale(0.99);
+  transform: translateY(14px) scale(0.99);
   pointer-events: none;
   transition: opacity 0.28s ease, transform 0.28s cubic-bezier(0.22, 1, 0.36, 1);
 }
@@ -118,10 +160,10 @@ body[data-surface="frosted-blue"] .ai-overview {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 38px;
-  height: 38px;
+  width: 34px;
+  height: 34px;
   border: 1px solid var(--frost-glass-border);
-  border-radius: 12px;
+  border-radius: 10px;
   background: var(--frost-glass-bg);
   color: inherit;
   cursor: pointer;
@@ -141,16 +183,16 @@ body[data-surface="frosted-blue"] .ai-overview {
 
 .frost-chat-log {
   overflow-y: auto;
-  padding: 18px 4px;
+  padding: 16px 4px;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 10px;
 }
 
 .frost-msg {
-  max-width: min(760px, 88%);
-  padding: 12px 14px;
-  border-radius: 16px;
+  max-width: min(680px, 86%);
+  padding: 11px 13px;
+  border-radius: 14px;
   border: 1px solid var(--frost-glass-border);
   background: var(--frost-glass-bg);
   backdrop-filter: blur(var(--frost-blur));
@@ -159,19 +201,19 @@ body[data-surface="frosted-blue"] .ai-overview {
 
 .frost-msg.user {
   align-self: flex-end;
-  background: color-mix(in srgb, var(--frost-accent) 20%, transparent);
+  background: color-mix(in srgb, var(--frost-accent) 18%, transparent);
 }
 
 .frost-chat-form {
   display: flex;
-  gap: 10px;
+  gap: 8px;
 }
 
 .frost-chat-input {
   flex: 1;
-  min-height: 46px;
-  padding: 12px 16px;
-  border-radius: 16px;
+  min-height: 42px;
+  padding: 10px 14px;
+  border-radius: 14px;
   border: 1px solid var(--frost-glass-border);
   background: var(--frost-glass-bg);
   color: inherit;
@@ -180,18 +222,18 @@ body[data-surface="frosted-blue"] .ai-overview {
 }
 
 .frost-chat-send {
-  padding: 0 18px;
+  padding: 0 16px;
   border: 1px solid var(--frost-glass-border);
-  border-radius: 16px;
-  background: color-mix(in srgb, var(--frost-accent) 24%, transparent);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--frost-accent) 20%, transparent);
   color: inherit;
   font: inherit;
   cursor: pointer;
 }
 
 .frost-chat-note {
-  margin-top: 8px;
-  font-size: 12px;
+  margin-top: 7px;
+  font-size: 11px;
   opacity: 0.65;
 }
 
