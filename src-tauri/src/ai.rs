@@ -97,10 +97,7 @@ pub fn validate_quotes(raw: &str, sources: &[TrustedSource]) -> Result<Value, St
     let mut ids = HashSet::new();
 
     for source in sources {
-        if !ids.insert(source.id)
-            || source.text.is_empty()
-            || source.text.len() > 200_000
-        {
+        if !ids.insert(source.id) || source.text.is_empty() || source.text.len() > 200_000 {
             return Err("Invalid or duplicate trusted source.".into());
         }
 
@@ -119,9 +116,7 @@ pub fn validate_quotes(raw: &str, sources: &[TrustedSource]) -> Result<Value, St
         );
     }
 
-    let quotes = object["quotes"]
-        .as_array()
-        .ok_or("Expected a quotes array.")?;
+    let quotes = object["quotes"].as_array().ok_or("Expected a quotes array.")?;
 
     if quotes.is_empty() || quotes.len() > 10 {
         return Err("Expected between one and ten quotations.".into());
@@ -130,14 +125,9 @@ pub fn validate_quotes(raw: &str, sources: &[TrustedSource]) -> Result<Value, St
     let mut verified = Vec::new();
 
     for item in quotes {
-        let fields = item
-            .as_object()
-            .ok_or("Expected a quotation object.")?;
+        let fields = item.as_object().ok_or("Expected a quotation object.")?;
 
-        if fields.len() != 2
-            || !fields.contains_key("source_id")
-            || !fields.contains_key("quote")
-        {
+        if fields.len() != 2 || !fields.contains_key("source_id") || !fields.contains_key("quote") {
             return Err("Quotation must contain only source_id and quote.".into());
         }
 
@@ -146,9 +136,7 @@ pub fn validate_quotes(raw: &str, sources: &[TrustedSource]) -> Result<Value, St
             .and_then(|id| u32::try_from(id).ok())
             .ok_or("Invalid source ID.")?;
 
-        let quote = fields["quote"]
-            .as_str()
-            .ok_or("Invalid quotation text.")?;
+        let quote = fields["quote"].as_str().ok_or("Invalid quotation text.")?;
 
         if quote.trim().chars().count() < 12 || quote.len() > 2000 {
             return Err("Quotation is empty, too short or too long.".into());
@@ -201,7 +189,6 @@ mod tests {
         assert_eq!(recommend_model(Some(8192), &[])["model"], "qwen3:1.7b");
         assert_eq!(recommend_model(Some(12287), &[])["model"], "qwen3:1.7b");
         assert_eq!(recommend_model(Some(12288), &[])["model"], "qwen3:4b");
-
         assert!(recommend_model(None, &[])["model"].is_null());
         assert!(recommend_model(Some(2047), &[])["model"].is_null());
     }
@@ -211,32 +198,33 @@ mod tests {
         let result = recommend_model(Some(4096), &["qwen3:32b".to_string()]);
         assert_eq!(result["model"], "qwen3:1.7b");
         assert_eq!(result["automatically_selected"], false);
-
         let result = recommend_model(Some(4096), &["qwen3:1.7b".to_string()]);
         assert_eq!(result["requires_download"], false);
     }
 
     #[test]
     fn parses_and_deduplicates_ollama_models() {
-        let raw = String::from(r#"{"models":[{"name":"qwen3:1.7b"},{"name":"qwen3:1.7b"}]}"#");
+        let raw = json!({
+            "models": [{"name": "qwen3:1.7b"}, {"name": "qwen3:1.7b"}]
+        })
+        .to_string();
         assert_eq!(
             parse_ollama_tags(&raw).unwrap(),
             vec!["qwen3:1.7b".to_string()]
         );
-
         assert!(parse_ollama_tags("not json").is_err());
         assert!(parse_ollama_tags("{}").is_err());
-        assert!(parse_ollama_tags(r#"{"models":[{}]}"#").is_err());
+        let missing_name = json!({"models": [{}]}).to_string();
+        assert!(parse_ollama_tags(&missing_name).is_err());
     }
 
     #[test]
     fn validates_literal_quote_against_trusted_source() {
-        let raw = String::from(
-            r#"{"quotes":[{"source_id":1,"quote":"does not automatically install models."}]}"#,
-        );
-
+        let raw = json!({
+            "quotes": [{"source_id": 1, "quote": "does not automatically install models."}]
+        })
+        .to_string();
         let result = validate_quotes(&raw, &[source()]).unwrap();
-
         assert_eq!(result["quotes"][0]["title"], "Original title");
         assert_eq!(result["quotes"][0]["claim_verified"], false);
         assert_eq!(result["semantic_validation"], false);
@@ -244,38 +232,42 @@ mod tests {
 
     #[test]
     fn rejects_fabricated_quote_and_unknown_source() {
-        let fabricated = String::from(
-            r#"{"quotes":[{"source_id":1,"quote":"Appmenu automatically installs every model."}]}"#,
-        );
+        let fabricated = json!({
+            "quotes": [{"source_id": 1, "quote": "Appmenu automatically installs every model."}]
+        })
+        .to_string();
         assert!(validate_quotes(&fabricated, &[source()]).is_err());
-
-        let unknown = String::from(
-            r#"{"quotes":[{"source_id":99,"quote":"does not automatically install models."}]}"#,
-        );
+        let unknown = json!({
+            "quotes": [{"source_id": 99, "quote": "does not automatically install models."}]
+        })
+        .to_string();
         assert!(validate_quotes(&unknown, &[source()]).is_err());
     }
 
     #[test]
     fn rejects_summary_and_model_supplied_metadata() {
-        let summary = String::from(r#"{"summary":"Invented claim","quotes":[]}"#");
+        let summary = json!({"summary": "Invented claim", "quotes": []}).to_string();
         assert!(validate_quotes(&summary, &[source()]).is_err());
-
-        let extra_field = String::from(
-            r#"{"quotes":[{"source_id":1,"quote":"does not automatically install models.","url":"https://wrong.example"}]}"#,
-        );
+        let extra_field = json!({
+            "quotes": [{
+                "source_id": 1,
+                "quote": "does not automatically install models.",
+                "url": "https://wrong.example"
+            }]
+        })
+        .to_string();
         assert!(validate_quotes(&extra_field, &[source()]).is_err());
     }
 
     #[test]
     fn rejects_empty_output_and_duplicate_sources() {
-        let empty = String::from(r#"{"quotes":[]}"#");
+        let empty = json!({"quotes": []}).to_string();
         assert!(validate_quotes(&empty, &[source()]).is_err());
-
         let sources = vec![source(), source()];
-
-        let raw = String::from(
-            r#"{"quotes":[{"source_id":1,"quote":"does not automatically install models."}]}"#,
-        );
+        let raw = json!({
+            "quotes": [{"source_id": 1, "quote": "does not automatically install models."}]
+        })
+        .to_string();
         assert!(validate_quotes(&raw, &sources).is_err());
     }
 }
