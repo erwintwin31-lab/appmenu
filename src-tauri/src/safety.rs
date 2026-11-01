@@ -22,7 +22,10 @@ pub fn winget_path() -> Result<PathBuf, String> {
         .map(PathBuf::from)
         .filter(|p| p.is_absolute())
         .ok_or_else(|| "Der Benutzerordner konnte nicht ermittelt werden.".to_string())?;
-    let path = base.join("Microsoft").join("WindowsApps").join("winget.exe");
+    let path = base
+        .join("Microsoft")
+        .join("WindowsApps")
+        .join("winget.exe");
     if !path.is_file() {
         return Err("Der winget-Ausführungsalias wurde nicht gefunden.".into());
     }

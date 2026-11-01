@@ -63,7 +63,10 @@ fn winget_failure(action: &str, output: &std::process::Output) -> String {
         .filter(|c| !c.is_control() || *c == '\n' || *c == '\t')
         .take(1200)
         .collect();
-    format!("{action} fehlgeschlagen (winget-Code {code}). {}", details.trim())
+    format!(
+        "{action} fehlgeschlagen (winget-Code {code}). {}",
+        details.trim()
+    )
 }
 
 fn user_installer_args<'a>(action: &'a str, id: &'a str) -> Vec<&'a str> {
@@ -235,7 +238,10 @@ fn cap_exe() -> Value {
     if safety::execution_allowed(elevation()) {
         cap("limited", "Start nach Bestätigung mit deinen aktuellen Rechten. Keine Signaturprüfung; Windows kann den Start blockieren.")
     } else {
-        cap("unavailable", "Erhöhte oder unbekannte Prozessrechte: Bitte Appmenu normal neu starten.")
+        cap(
+            "unavailable",
+            "Erhöhte oder unbekannte Prozessrechte: Bitte Appmenu normal neu starten.",
+        )
     }
 }
 
@@ -245,16 +251,25 @@ fn cap_msi() -> Value {
 
 fn caps(elev: &str, winget: bool) -> Value {
     let install = if !safety::execution_allowed(elev) {
-        cap("unavailable", "Erhöhte oder unbekannte Prozessrechte: Bitte Appmenu normal neu starten.")
+        cap(
+            "unavailable",
+            "Erhöhte oder unbekannte Prozessrechte: Bitte Appmenu normal neu starten.",
+        )
     } else if !winget {
-        cap("unavailable", "Der Windows-Paketdienst (winget) wurde auf diesem Gerät nicht gefunden.")
+        cap(
+            "unavailable",
+            "Der Windows-Paketdienst (winget) wurde auf diesem Gerät nicht gefunden.",
+        )
     } else {
         cap("limited", "Nur Benutzerinstallationen. Paketunterstützung wird geprüft; Geräterichtlinien können die Ausführung trotzdem verhindern.")
     };
     let search = if winget {
         cap("available", "Programmsuche über winget.")
     } else {
-        cap("unavailable", "Ohne winget ist die Programmsuche nicht verfügbar.")
+        cap(
+            "unavailable",
+            "Ohne winget ist die Programmsuche nicht verfügbar.",
+        )
     };
     json!({
         "search": search,
@@ -857,7 +872,10 @@ mod safety_regressions {
             assert!(args.windows(2).any(|a| a == ["--id", "Vendor.App"]));
             assert!(args.contains(&"--disable-interactivity"));
             assert!(!args.contains(&"machine"));
-            assert_eq!(args.contains(&"--accept-package-agreements"), action == "install");
+            assert_eq!(
+                args.contains(&"--accept-package-agreements"),
+                action == "install"
+            );
         }
     }
 
