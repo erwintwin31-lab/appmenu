@@ -1,17 +1,18 @@
 use serde_json::{json, Value};
 use sha2::{Digest, Sha256};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::io::Read;
 #[cfg(windows)]
 use std::os::windows::process::CommandExt;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
-use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, SystemTime};
 use tauri::State;
 
 mod ai;
+mod safety;
 
 use ai::{parse_ollama_tags, recommend_model, validate_quotes, TrustedSource};
 
@@ -28,6 +29,8 @@ struct Job {
 struct AppState {
     files: Mutex<HashMap<String, PathBuf>>,
     jobs: Mutex<HashMap<String, Arc<Mutex<Job>>>>,
+    known_packages: Mutex<HashSet<String>>,
+    installing: Arc<AtomicBool>,
 }
 
 fn hex(b: &[u8]) -> String {
@@ -45,14 +48,79 @@ fn new_id() -> String {
     hex(&h.finalize())[..12].to_string()
 }
 
-fn hidden(program: &str) -> Command {
-    #[cfg_attr(not(windows), allow(unused_mut))]
-    let mut c = Command::new(program);
+fn winget_command() -> Result<Command, String> {
+    let mut c = Command::new(safety::winget_path()?);
+    c.stdin(Stdio::null());
     #[cfg(windows)]
-    {
-        c.creation_flags(0x0800_0000);
+    c.creation_flags(0x0800_0000);
+    Ok(c)
+}
+
+fn winget_failure(action: &str, output: &std::process::Output) -> String {
+    let code = output.status.code().unwrap_or(-1);
+    let details: String = String::from_utf8_lossy(&output.stderr)
+        .chars()
+        .filter(|c| !c.is_control() || *c == '\n' || *c == '\t')
+        .take(1200)
+        .collect();
+    format!(
+        "{action} fehlgeschlagen (winget-Code {code}). {}",
+        details.trim()
+    )
+}
+
+fn user_installer_args<'a>(action: &'a str, id: &'a str) -> Vec<&'a str> {
+    let mut args = vec![
+        action,
+        "--id",
+        id,
+        "--exact",
+        "--scope",
+        "user",
+        "--source",
+        "winget",
+        "--accept-source-agreements",
+        "--disable-interactivity",
+    ];
+    if action == "install" {
+        args.push("--accept-package-agreements");
     }
-    c
+    args
+}
+
+fn preflight_user_installer(id: &str) -> Result<String, String> {
+    if !valid_id(id) {
+        return Err("Ungültige Paket-ID.".into());
+    }
+    let out = winget_command()?
+        .args(user_installer_args("show", id))
+        .output()
+        .map_err(|e| format!("Paketprüfung konnte nicht gestartet werden: {e}"))?;
+    if !out.status.success() {
+        return Err(winget_failure("Prüfung der Benutzerinstallation", &out));
+    }
+    let lines: Vec<String> = clean_lines(&String::from_utf8_lossy(&out.stdout))
+        .into_iter()
+        .take(45)
+        .collect();
+    if lines.is_empty() {
+        return Err("winget lieferte keine lesbaren Paketdetails.".into());
+    }
+    Ok(lines.join("\n"))
+}
+
+fn validate_selection(ids: &[String], known: &HashSet<String>) -> Result<(), String> {
+    if ids.is_empty() || ids.len() > 10 || !ids.iter().all(|id| valid_id(id)) {
+        return Err("Keine gültige Auswahl.".into());
+    }
+    let unique: HashSet<&String> = ids.iter().collect();
+    if unique.len() != ids.len() {
+        return Err("Doppelte Paket-IDs in der Auswahl.".into());
+    }
+    if !ids.iter().all(|id| known.contains(id)) {
+        return Err("Pakete müssen aus einer erfolgreichen Suche dieser Sitzung stammen.".into());
+    }
+    Ok(())
 }
 
 fn valid_id(s: &str) -> bool {
@@ -149,7 +217,8 @@ fn parse_table(lines: &[String]) -> Vec<Value> {
 }
 
 fn winget_version() -> Option<String> {
-    hidden("winget")
+    winget_command()
+        .ok()?
         .arg("--version")
         .output()
         .ok()
@@ -158,19 +227,7 @@ fn winget_version() -> Option<String> {
 }
 
 fn elevation() -> &'static str {
-    match hidden("whoami").arg("/groups").output() {
-        Ok(o) if o.status.success() => {
-            let t = String::from_utf8_lossy(&o.stdout);
-            if t.contains("S-1-16-12288") {
-                "elevated"
-            } else if t.contains("S-1-5-32-544") {
-                "admin_not_elevated"
-            } else {
-                "standard"
-            }
-        }
-        _ => "unknown",
-    }
+    safety::elevation()
 }
 
 fn cap(state: &str, reason: &str) -> Value {
@@ -178,32 +235,44 @@ fn cap(state: &str, reason: &str) -> Value {
 }
 
 fn cap_exe() -> Value {
-    cap("available", "Das Programm startet mit deinen aktuellen Rechten. Verlangt es Administratorrechte, startet Appmenu es nicht.")
+    if safety::execution_allowed(elevation()) {
+        cap("limited", "Start nach Bestätigung mit deinen aktuellen Rechten. Keine Signaturprüfung; Windows kann den Start blockieren.")
+    } else {
+        cap(
+            "unavailable",
+            "Erhöhte oder unbekannte Prozessrechte: Bitte Appmenu normal neu starten.",
+        )
+    }
 }
 
 fn cap_msi() -> Value {
-    cap("limited", "Installationspakete verlangen oft Administratorrechte. Appmenu kann das nicht umgehen; Windows entscheidet.")
+    cap("unavailable", "Direkter MSI-Start ist deaktiviert. Nutze eine unterstützte Benutzerinstallation über die Suche.")
 }
 
 fn caps(elev: &str, winget: bool) -> Value {
-    let install = if !winget {
+    let install = if !safety::execution_allowed(elev) {
+        cap(
+            "unavailable",
+            "Erhöhte oder unbekannte Prozessrechte: Bitte Appmenu normal neu starten.",
+        )
+    } else if !winget {
         cap(
             "unavailable",
             "Der Windows-Paketdienst (winget) wurde auf diesem Gerät nicht gefunden.",
         )
-    } else if elev == "unknown" {
-        cap(
-            "limited",
-            "Rechte nicht sicher feststellbar. Installation nur für dein Konto, Ausgang ungewiss.",
-        )
+    } else {
+        cap("limited", "Nur Benutzerinstallationen. Paketunterstützung wird geprüft; Geräterichtlinien können die Ausführung trotzdem verhindern.")
+    };
+    let search = if winget {
+        cap("available", "Programmsuche über winget.")
     } else {
         cap(
-            "available",
-            "Installation nur für dein Konto, ohne Administratorrechte.",
+            "unavailable",
+            "Ohne winget ist die Programmsuche nicht verfügbar.",
         )
     };
     json!({
-        "search": cap("available", "Die Suche benötigt keine besonderen Rechte."),
+        "search": search,
         "install_user": install,
         "open_exe": cap_exe(),
         "open_msi": cap_msi(),
@@ -221,7 +290,7 @@ fn get_path(state: &State<'_, AppState>, token: &str) -> Result<PathBuf, String>
     if !p.is_file() {
         return Err("Die Datei existiert nicht mehr.".into());
     }
-    Ok(p)
+    std::fs::canonicalize(p).map_err(|_| "Die Datei konnte nicht aufgelöst werden.".to_string())
 }
 
 #[tauri::command]
@@ -243,7 +312,7 @@ async fn info() -> Result<Value, String> {
 }
 
 #[tauri::command]
-async fn search(q: String) -> Result<Value, String> {
+async fn search(q: String, state: State<'_, AppState>) -> Result<Value, String> {
     let q = q.trim().to_string();
     if q.is_empty()
         || q.chars().count() > 80
@@ -252,8 +321,8 @@ async fn search(q: String) -> Result<Value, String> {
     {
         return Err("Ungültige Suche.".into());
     }
-    tauri::async_runtime::spawn_blocking(move || -> Result<Value, String> {
-        let out = hidden("winget")
+    let result = tauri::async_runtime::spawn_blocking(move || -> Result<Value, String> {
+        let out = winget_command()?
             .args([
                 "search",
                 "--query",
@@ -261,42 +330,46 @@ async fn search(q: String) -> Result<Value, String> {
                 "--source",
                 "winget",
                 "--accept-source-agreements",
+                "--disable-interactivity",
             ])
             .output()
-            .map_err(|_| "winget wurde nicht gefunden.".to_string())?;
+            .map_err(|e| format!("winget konnte nicht gestartet werden: {e}"))?;
+        if !out.status.success() {
+            if out.status.code().map(|c| c as u32) == Some(0x8a15_0014) {
+                return Ok(json!({ "items": [] }));
+            }
+            return Err(winget_failure("Suche", &out));
+        }
         let lines = clean_lines(&String::from_utf8_lossy(&out.stdout));
-        Ok(json!({ "items": parse_table(&lines) }))
+        let items = parse_table(&lines);
+        if items.is_empty() {
+            return Err("Die winget-Ausgabe konnte nicht zuverlässig gelesen werden.".into());
+        }
+        Ok(json!({ "items": items }))
     })
     .await
-    .map_err(|e| e.to_string())?
+    .map_err(|e| e.to_string())??;
+    let found: Vec<String> = result["items"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .filter_map(|item| item["id"].as_str().map(str::to_string))
+        .collect();
+    let mut known = state
+        .known_packages
+        .lock()
+        .map_err(|_| "Interner Fehler.".to_string())?;
+    if known.len() + found.iter().filter(|id| !known.contains(*id)).count() > 512 {
+        return Err("Zu viele Pakete in dieser Sitzung. Bitte Appmenu neu starten.".into());
+    }
+    known.extend(found);
+    Ok(result)
 }
 
 #[tauri::command]
 async fn detail(id: String) -> Result<Value, String> {
-    if !valid_id(&id) {
-        return Err("Ungültige Paket-ID.".into());
-    }
-    tauri::async_runtime::spawn_blocking(move || -> Result<Value, String> {
-        let out = hidden("winget")
-            .args([
-                "show",
-                "--id",
-                id.as_str(),
-                "--exact",
-                "--source",
-                "winget",
-                "--accept-source-agreements",
-            ])
-            .output()
-            .map_err(|_| "winget wurde nicht gefunden.".to_string())?;
-        let lines: Vec<String> = clean_lines(&String::from_utf8_lossy(&out.stdout))
-            .into_iter()
-            .take(45)
-            .collect();
-        if lines.is_empty() {
-            return Err("Keine Details gefunden.".into());
-        }
-        Ok(json!({ "text": lines.join("\n") }))
+    tauri::async_runtime::spawn_blocking(move || {
+        preflight_user_installer(&id).map(|text| json!({ "text": text }))
     })
     .await
     .map_err(|e| e.to_string())?
@@ -346,6 +419,9 @@ fn pump<R: Read + Send + 'static>(mut r: R, job: Arc<Mutex<Job>>) -> std::thread
                     flush(&mut acc, &job);
                 } else {
                     acc.push(b);
+                    if acc.len() >= 16 * 1024 {
+                        flush(&mut acc, &job);
+                    }
                 }
             }
         }
@@ -356,19 +432,18 @@ fn pump<R: Read + Send + 'static>(mut r: R, job: Arc<Mutex<Job>>) -> std::thread
 fn run_install(ids: Vec<String>, job: Arc<Mutex<Job>>) {
     for id in ids {
         push(&job, format!("== {id} =="));
-        let child = hidden("winget")
-            .args([
-                "install",
-                "--id",
-                id.as_str(),
-                "--exact",
-                "--scope",
-                "user",
-                "--source",
-                "winget",
-                "--accept-package-agreements",
-                "--accept-source-agreements",
-            ])
+        let mut command = match safety::require_normal_process().and_then(|_| winget_command()) {
+            Ok(command) => command,
+            Err(error) => {
+                push(&job, error);
+                if let Ok(mut j) = job.lock() {
+                    j.codes.push(-1);
+                }
+                break;
+            }
+        };
+        let child = command
+            .args(user_installer_args("install", &id))
             .stdin(Stdio::null())
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
@@ -410,15 +485,25 @@ fn run_install(ids: Vec<String>, job: Arc<Mutex<Job>>) {
 
 #[tauri::command]
 async fn install(ids: Vec<String>, state: State<'_, AppState>) -> Result<Value, String> {
-    if ids.is_empty() || ids.len() > 10 || !ids.iter().all(|i| valid_id(i)) {
-        return Err("Keine gültige Auswahl.".into());
+    {
+        let known = state
+            .known_packages
+            .lock()
+            .map_err(|_| "Interner Fehler.".to_string())?;
+        validate_selection(&ids, &known)?;
     }
-    let has = tauri::async_runtime::spawn_blocking(winget_version)
-        .await
-        .map_err(|e| e.to_string())?;
-    if has.is_none() {
-        return Err("winget wurde nicht gefunden.".into());
-    }
+    safety::require_normal_process()?;
+    let guard = safety::InstallGuard::acquire(state.installing.clone())?;
+    let ids = tauri::async_runtime::spawn_blocking(move || -> Result<Vec<String>, String> {
+        // Check the entire plan before starting any installation.
+        safety::require_normal_process()?;
+        for id in &ids {
+            preflight_user_installer(id)?;
+        }
+        Ok(ids)
+    })
+    .await
+    .map_err(|e| e.to_string())??;
     let job = Arc::new(Mutex::new(Job::default()));
     let jid = new_id();
     state
@@ -426,7 +511,13 @@ async fn install(ids: Vec<String>, state: State<'_, AppState>) -> Result<Value, 
         .lock()
         .map_err(|_| "Interner Fehler.".to_string())?
         .insert(jid.clone(), job.clone());
-    std::thread::spawn(move || run_install(ids, job));
+    std::thread::Builder::new()
+        .name("appmenu-install".into())
+        .spawn(move || {
+            let _guard = guard;
+            run_install(ids, job);
+        })
+        .map_err(|e| format!("Installation konnte nicht gestartet werden: {e}"))?;
     Ok(json!({ "job": jid }))
 }
 
@@ -611,22 +702,23 @@ async fn hash(token: String, state: State<'_, AppState>) -> Result<Value, String
 
 #[tauri::command]
 fn open(token: String, state: State<'_, AppState>) -> Result<Value, String> {
+    safety::require_normal_process()?;
     let p = get_path(&state, &token)?;
     let ext = ext_of(&p);
     let spawned = match ext.as_str() {
         "exe" => Command::new(&p)
             .current_dir(p.parent().unwrap_or_else(|| Path::new(".")))
             .spawn(),
-        "msi" => Command::new("msiexec").arg("/i").arg(&p).spawn(),
+        "msi" => return Err("Direkter MSI-Start ist in Appmenu Lite deaktiviert.".into()),
         _ => return Ok(json!({ "message": "Appmenu öffnet diesen Dateityp nicht." })),
     };
     let message = match spawned {
-        Ok(_) => {
-            if ext == "msi" {
-                "Installer geöffnet. Windows entscheidet über die Rechte.".to_string()
-            } else {
-                "Programm gestartet.".to_string()
-            }
+        Ok(mut child) => {
+            std::thread::spawn(move || {
+                let _ = child.wait();
+            });
+            "Windows hat den Prozessstart angenommen. Die Datei wurde nicht auf Schadsoftware geprüft."
+                .to_string()
         }
         Err(e) => match e.raw_os_error() {
             Some(740) => "Das Programm verlangt Administratorrechte. Appmenu startet es nicht und umgeht das nicht.".to_string(),
@@ -742,4 +834,73 @@ pub fn run() {
         ])
         .run(tauri::generate_context!())
         .expect("Fehler beim Start von Appmenu");
+}
+
+#[cfg(test)]
+mod safety_regressions {
+    use super::*;
+
+    #[test]
+    fn ids_reject_options_and_shell_fragments() {
+        for id in ["7zip.7zip", "Mozilla.Firefox", "Notepad++.Notepad++"] {
+            assert!(valid_id(id));
+        }
+        for id in ["", "--scope", "a b", "a;b", "a&b", "../x", "a\nb"] {
+            assert!(!valid_id(id));
+        }
+    }
+
+    #[test]
+    fn selection_requires_discovered_unique_ids_and_respects_limit() {
+        let known = HashSet::from(["Vendor.App".to_string(), "Vendor.Other".to_string()]);
+        assert!(validate_selection(&["Vendor.App".into()], &known).is_ok());
+        assert!(validate_selection(&["Vendor.Other".into(), "Vendor.App".into()], &known).is_ok());
+        assert!(validate_selection(&[], &known).is_err());
+        assert!(validate_selection(&["Unseen.App".into()], &known).is_err());
+        assert!(validate_selection(&["Vendor.App".into(), "Vendor.App".into()], &known).is_err());
+        let many: Vec<String> = (0..11).map(|i| format!("Vendor.App{i}")).collect();
+        let all = many.iter().cloned().collect();
+        assert!(validate_selection(&many, &all).is_err());
+    }
+
+    #[test]
+    fn installer_and_preflight_share_fixed_user_scope() {
+        for action in ["show", "install"] {
+            let args = user_installer_args(action, "Vendor.App");
+            assert!(args.windows(2).any(|a| a == ["--scope", "user"]));
+            assert!(args.windows(2).any(|a| a == ["--source", "winget"]));
+            assert!(args.windows(2).any(|a| a == ["--id", "Vendor.App"]));
+            assert!(args.contains(&"--disable-interactivity"));
+            assert!(!args.contains(&"machine"));
+            assert_eq!(
+                args.contains(&"--accept-package-agreements"),
+                action == "install"
+            );
+        }
+    }
+
+    #[test]
+    fn capabilities_fail_closed_and_do_not_promise_policy_approval() {
+        for mode in ["unknown", "elevated"] {
+            assert_eq!(caps(mode, true)["install_user"]["state"], "unavailable");
+        }
+        assert_eq!(caps("standard", true)["install_user"]["state"], "limited");
+        assert_eq!(caps("standard", false)["search"]["state"], "unavailable");
+        assert_eq!(cap_msi()["state"], "unavailable");
+    }
+
+    #[test]
+    fn table_parser_preserves_unicode_names_and_validates_ids() {
+        let lines = vec![
+            "Name        Id               Version  Source".into(),
+            "---------------------------------------------".into(),
+            "Äpfel       Vendor.App       1.0      winget".into(),
+            "Bad         --scope          2.0      winget".into(),
+        ];
+        let items = parse_table(&lines);
+        assert_eq!(items.len(), 1);
+        assert_eq!(items[0]["nm"], "Äpfel");
+        assert_eq!(items[0]["id"], "Vendor.App");
+        assert!(parse_table(&["not a winget table".into()]).is_empty());
+    }
 }
