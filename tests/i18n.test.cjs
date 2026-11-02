@@ -1,0 +1,13 @@
+const test = require('node:test');
+const assert = require('node:assert/strict');
+const catalogs = require('../src/i18n/catalogs.js');
+const {createI18n} = require('../src/i18n/core.js');
+test('defaults to English and does not inspect browser language',() => { assert.equal(createI18n(catalogs).getLocale(),'en'); });
+test('restores an explicit supported language',() => { assert.equal(createI18n(catalogs,{getItem:() => 'fr'}).getLocale(),'fr'); });
+test('rejects invalid saved and requested locales',() => { const i = createI18n(catalogs,{getItem:() => '__proto__'}); assert.equal(i.getLocale(),'en'); assert.equal(i.setLocale('xx'),false); assert.equal(i.getLocale(),'en'); });
+test('storage failure does not block switching',() => { const i = createI18n(catalogs,{getItem(){throw Error();},setItem(){throw Error();}}); assert.equal(i.setLocale('de'),true); assert.equal(i.t('settings.title'),'Einstellungen'); });
+test('falls back to English for missing translations',() => { const i = createI18n({en:catalogs.en,de:{name:'Deutsch',messages:{}}}); i.setLocale('de'); assert.equal(i.t('settings.title'),'Settings'); });
+test('interpolation treats user values as literal strings',() => { const i = createI18n(catalogs); assert.equal(i.t('search.selected',{count:'$&',limit:5}),'$& / 5 selected'); });
+test('notices include English and selected non-English language',() => { const i = createI18n(catalogs); assert.equal(i.notices().length,1); i.setLocale('fr'); assert.deepEqual(i.notices().map(n => n.lang),['en','fr']); });
+test('catalog keys and placeholders match English',() => { const keys = Object.keys(catalogs.en.messages).sort(); const slots = text => (text.match(/\{\w+\}/g)||[]).sort(); for (const [code,c] of Object.entries(catalogs)) { assert.deepEqual(Object.keys(c.messages).sort(),keys,code); for (const key of keys) assert.deepEqual(slots(c.messages[key]),slots(catalogs.en.messages[key]),code+':'+key); assert.equal(c.machineTranslated,code !== 'en'); } });
+test('switching persists preference and notifies once',() => { let saved, calls=0; const i=createI18n(catalogs,{getItem:() => null,setItem:(key,value) => {saved=[key,value];}}); const off=i.subscribe(() => calls++); i.setLocale('de'); i.setLocale('de'); off(); i.setLocale('fr'); assert.equal(calls,1); assert.deepEqual(saved,['am_language_v1','fr']); });
