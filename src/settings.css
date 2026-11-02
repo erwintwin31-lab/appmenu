@@ -1,0 +1,42 @@
+/* Shared settings UI, loaded after the existing theme layers. */
+.settings-tabs{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0 24px}
+.settings-tabs button{padding:8px 16px;border:1px solid var(--line);border-radius:999px;color:var(--mute);min-height:40px}
+.settings-tabs button[aria-selected=true]{background:var(--asoft);border-color:var(--accent);color:var(--text)}
+.theme-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(200px,100%),1fr));gap:14px}
+.theme-card{position:relative;padding:14px;border:1px solid var(--line);border-radius:16px;background:var(--panel);display:grid;gap:12px;align-content:start;min-width:0}
+.theme-card.selected{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
+.theme-card strong{font-size:14px}.theme-card small{font-size:12px;line-height:1.5;color:var(--mute)}
+.theme-preview{display:grid;grid-template-columns:1fr 1fr;height:74px;border-radius:10px;overflow:hidden;border:1px solid var(--line)}
+.theme-preview>span{position:relative;background:#f4f6f9}.theme-preview>span+span{background:#1b222c}
+.theme-preview>span::before{content:'';position:absolute;left:8px;right:8px;top:10px;height:7px;border:1px solid #0002;border-radius:4px;background:#fff}
+.theme-preview>span::after{content:'';position:absolute;left:8px;top:24px;width:46%;height:7px;border-radius:4px;background:#0078d4}
+.preview-black>span{background:#fff}.preview-black>span+span{background:#000}.preview-black>span::after{background:#000}.preview-black>span+span::after{background:#fff}
+.preview-midnight>span{background:#eff0ff}.preview-midnight>span+span{background:#11162b}.preview-midnight>span::after{background:#6064cc}
+.preview-frosted-blue>span{background:#deedf8}.preview-frosted-blue>span+span{background:#15334b}.preview-frosted-blue>span::after{background:#159abd}
+.theme-check{position:absolute;right:8px;top:8px;border-radius:50%;background:var(--accent);color:white;width:22px;height:22px;display:grid;place-items:center;font-size:13px}
+.ed-options{display:flex;gap:8px;flex-wrap:wrap}.ed-choice{padding:9px 14px;border:1px solid var(--line);background:var(--panel);color:var(--mute);font-size:14px;min-height:40px;border-radius:10px}
+.ed-choice.active{border-color:var(--accent);background:var(--asoft);color:var(--text)}
+.ed-check{display:flex;align-items:center;gap:10px;min-height:40px;font-size:14px}.ed-check input{accent-color:var(--accent);width:17px;height:17px}
+.ed-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(180px,100%),1fr));gap:12px;margin-top:16px}
+.ed-num{display:grid;gap:6px;font-size:13px;color:var(--mute)}
+.ed-num input,.ed-hex{width:100%;padding:10px;background:var(--panel);border:1px solid var(--line);border-radius:10px;color:var(--text);font:inherit;min-height:42px}
+.ed-color{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:18px;font-size:14px;color:var(--mute)}
+.ed-color input[type=color]{width:52px;height:40px;padding:3px;border:1px solid var(--line);border-radius:8px;background:var(--panel)}.ed-color .ed-hex{width:110px}
+.ed-item{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:8px 12px;margin-top:6px;background:var(--panel);border:1px solid var(--line);border-radius:10px;font-size:14px}
+.ed-item button{min-height:36px;padding:6px}.ed-item button:disabled{opacity:.35;cursor:not-allowed}.ed-item button[aria-pressed=true]{color:var(--at)}
+.ed-logo-hidden .logo>svg{display:none}
+html:root body[data-surface=glass]{--bg:#161c25;--win:#1b222c;--panel:#222a35;--tile:#ffffff08;--text:#e9eef5;--mute:#a5b1bf;--line:#ffffff1f;--sel:#ffffff12;--glass-fill:color-mix(in srgb,var(--win) var(--ed-opacity,94%),transparent)}
+html:root body[data-surface=glass].light{--bg:#dfe5ec;--win:#f4f6f9;--panel:#fff;--tile:#00000006;--text:#18202b;--mute:#536170;--line:#00000026;--sel:#0000000d}
+html:root body[data-surface=black]{--bg:#000;--win:#000;--panel:#101010;--tile:#ffffff0d;--text:#fff;--mute:#c7c7c7;--line:#ffffff52;--sel:#ffffff20;--glass-fill:#000;background:#000}
+html:root body[data-surface=black].light{--bg:#fff;--win:#fff;--panel:#f6f6f6;--tile:#00000008;--text:#000;--mute:#454545;--line:#00000052;--sel:#00000012;--glass-fill:#fff;background:#fff}
+html:root body[data-surface=black] .win{background:var(--win);backdrop-filter:none;-webkit-backdrop-filter:none}
+html:root body[data-surface=midnight]{--bg:#090e1c;--win:#11162b;--panel:#1a2038;--tile:#ffffff08;--text:#f2f3ff;--mute:#b2bbd5;--line:#ffffff28;--sel:#ffffff16;--glass-fill:color-mix(in srgb,var(--win) var(--ed-opacity,94%),transparent)}
+html:root body[data-surface=midnight].light{--bg:#e7e9f6;--win:#f3f4ff;--panel:#fff;--tile:#00000006;--text:#171b32;--mute:#555e7c;--line:#222a502a;--sel:#242e6b12}
+html:root body[data-surface=frosted-blue]{--bg:#0c1a2b;--win:#152a3f;--panel:#1e3a52;--tile:#ffffff0d;--text:#f2f9ff;--mute:#b9d3e4;--line:#cfeaff2e;--sel:#d9f2ff1f;--glass-fill:color-mix(in srgb,var(--win) var(--ed-opacity,94%),transparent)}
+html:root body[data-surface=frosted-blue].light{--bg:#dcecf8;--win:#eef8ff;--panel:#fff;--tile:#173a5010;--text:#12293a;--mute:#46677a;--line:#2364872b;--sel:#1c719318}
+html:root body:not([data-surface=black]) .win{background:linear-gradient(140deg,#ffffff08,transparent 60%),var(--glass-fill);backdrop-filter:blur(var(--ed-blur,20px)) saturate(115%);-webkit-backdrop-filter:blur(var(--ed-blur,20px)) saturate(115%)}
+body[data-mode=window][data-tabs=top] nav{order:0}body[data-mode=window][data-tabs=top] main{order:1}
+body[data-mode=dock][data-tabs=bottom] main{order:initial}body[data-mode=dock][data-tabs=bottom] nav{order:initial}
+.settings-tabs button:focus-visible,.theme-card:focus-visible,.ed-choice:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+@media(max-width:700px){.theme-grid{grid-template-columns:1fr}.settings-tabs button{min-height:44px}.ed-grid{grid-template-columns:1fr}.ed-item .sp{display:block}.ed-tool{padding:14px;min-width:0}.ed-tool span{min-width:0;overflow-wrap:anywhere}}
+@media(prefers-reduced-transparency:reduce){html:root body .win{background:var(--win);backdrop-filter:none;-webkit-backdrop-filter:none}}
