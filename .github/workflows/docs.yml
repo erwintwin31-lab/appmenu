@@ -1,0 +1,60 @@
+name: Documentation CI
+
+on:
+  pull_request:
+    paths:
+      - 'README.md'
+      - 'docs/**'
+      - '.github/workflows/docs.yml'
+  push:
+    branches:
+      - docs/readme-overview
+    paths:
+      - 'README.md'
+      - 'docs/**'
+      - '.github/workflows/docs.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  docs:
+    name: Validate documentation
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Check Markdown links
+        uses: gaurav-nelson/github-action-markdown-link-check@v1
+        with:
+          use-quiet-mode: 'yes'
+          config-file: '.github/markdown-link-check.json'
+          folder-path: '.'
+          file-path: './README.md'
+
+      - name: Check referenced documentation images
+        shell: bash
+        run: |
+          set -euo pipefail
+          missing=0
+          while IFS= read -r image; do
+            path=$(printf '%s' "$image" | sed 's/^\.\///')
+            if [ ! -f "$path" ]; then
+              echo "Missing image: $path"
+              missing=1
+            fi
+          done < <(grep -oE '\]\(([^)]+\.(png|jpg|jpeg|webp|svg|gif))\)' README.md | sed -E 's/^\]\((.*)\)$/\1/' || true)
+          exit "$missing"
+
+      - name: Check required README sections
+        shell: bash
+        run: |
+          set -euo pipefail
+          for heading in '## Current status' '## Features' '## Themes and layouts' '## Local AI' '## Roadmap' '## Safety boundaries' '## Build and download'; do
+            grep -Fq "$heading" README.md || {
+              echo "Missing required section: $heading"
+              exit 1
+            }
+          done
