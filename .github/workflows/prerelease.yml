@@ -70,7 +70,7 @@ jobs:
           Copy-Item src-tauri/icons assets-out/icons -Recurse
           Copy-Item src-tauri/installer assets-out/installer -Recurse
           Copy-Item src-tauri/app-icon.png assets-out/app-icon.png
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: assets
           path: assets-out
