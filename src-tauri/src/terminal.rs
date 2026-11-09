@@ -24,7 +24,14 @@ fn cli_path(app: &tauri::AppHandle) -> Result<PathBuf, String> {
     #[cfg(unix)]
     {
         use std::os::unix::fs::PermissionsExt;
-        if path.metadata().map_err(|e| e.to_string())?.permissions().mode() & 0o111 == 0 {
+        if path
+            .metadata()
+            .map_err(|e| e.to_string())?
+            .permissions()
+            .mode()
+            & 0o111
+            == 0
+        {
             return Err("Die CLI-Ressource ist nicht ausführbar.".into());
         }
     }
