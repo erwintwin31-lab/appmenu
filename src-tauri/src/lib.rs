@@ -2,8 +2,6 @@ use serde_json::{json, Value};
 use sha2::{Digest, Sha256};
 use std::collections::{HashMap, HashSet};
 use std::io::Read;
-#[cfg(windows)]
-use std::os::windows::process::CommandExt;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
@@ -12,9 +10,15 @@ use std::time::{Duration, SystemTime};
 use tauri::State;
 
 mod ai;
+mod packages;
 mod safety;
+mod terminal;
 
 use ai::{parse_ollama_tags, recommend_model, validate_quotes, TrustedSource};
+use packages::{
+    clean_lines, parse_table, preflight_user_installer, user_installer_args, valid_id,
+    winget_command, winget_failure, winget_version,
+};
 
 static COUNTER: AtomicU64 = AtomicU64::new(1);
 
@@ -48,67 +52,6 @@ fn new_id() -> String {
     hex(&h.finalize())[..12].to_string()
 }
 
-fn winget_command() -> Result<Command, String> {
-    let mut c = Command::new(safety::winget_path()?);
-    c.stdin(Stdio::null());
-    #[cfg(windows)]
-    c.creation_flags(0x0800_0000);
-    Ok(c)
-}
-
-fn winget_failure(action: &str, output: &std::process::Output) -> String {
-    let code = output.status.code().unwrap_or(-1);
-    let details: String = String::from_utf8_lossy(&output.stderr)
-        .chars()
-        .filter(|c| !c.is_control() || *c == '\n' || *c == '\t')
-        .take(1200)
-        .collect();
-    format!(
-        "{action} fehlgeschlagen (winget-Code {code}). {}",
-        details.trim()
-    )
-}
-
-fn user_installer_args<'a>(action: &'a str, id: &'a str) -> Vec<&'a str> {
-    let mut args = vec![
-        action,
-        "--id",
-        id,
-        "--exact",
-        "--scope",
-        "user",
-        "--source",
-        "winget",
-        "--accept-source-agreements",
-        "--disable-interactivity",
-    ];
-    if action == "install" {
-        args.push("--accept-package-agreements");
-    }
-    args
-}
-
-fn preflight_user_installer(id: &str) -> Result<String, String> {
-    if !valid_id(id) {
-        return Err("Ungültige Paket-ID.".into());
-    }
-    let out = winget_command()?
-        .args(user_installer_args("show", id))
-        .output()
-        .map_err(|e| format!("Paketprüfung konnte nicht gestartet werden: {e}"))?;
-    if !out.status.success() {
-        return Err(winget_failure("Prüfung der Benutzerinstallation", &out));
-    }
-    let lines: Vec<String> = clean_lines(&String::from_utf8_lossy(&out.stdout))
-        .into_iter()
-        .take(45)
-        .collect();
-    if lines.is_empty() {
-        return Err("winget lieferte keine lesbaren Paketdetails.".into());
-    }
-    Ok(lines.join("\n"))
-}
-
 fn validate_selection(ids: &[String], known: &HashSet<String>) -> Result<(), String> {
     if ids.is_empty() || ids.len() > 10 || !ids.iter().all(|id| valid_id(id)) {
         return Err("Keine gültige Auswahl.".into());
@@ -123,14 +66,6 @@ fn validate_selection(ids: &[String], known: &HashSet<String>) -> Result<(), Str
     Ok(())
 }
 
-fn valid_id(s: &str) -> bool {
-    let first_ok = s.starts_with(|c: char| c.is_ascii_alphanumeric());
-    first_ok
-        && s.len() <= 100
-        && s.chars()
-            .all(|c| c.is_ascii_alphanumeric() || matches!(c, '.' | '-' | '_' | '+'))
-}
-
 fn env_or(k: &str) -> String {
     std::env::var(k).unwrap_or_default()
 }
@@ -140,90 +75,6 @@ fn ext_of(p: &Path) -> String {
         .and_then(|x| x.to_str())
         .map(|x| x.to_ascii_lowercase())
         .unwrap_or_default()
-}
-
-fn clean_lines(text: &str) -> Vec<String> {
-    text.split('\n')
-        .filter_map(|l| {
-            let seg = l.rsplit('\r').find(|s| !s.trim().is_empty())?;
-            let t = seg.trim_end();
-            if t.trim().chars().count() <= 1 || t.contains(['█', '▒', '▓', '░']) {
-                return None;
-            }
-            Some(t.to_string())
-        })
-        .collect()
-}
-
-fn find_word(h: &[char], word: &str) -> Option<usize> {
-    let w: Vec<char> = word.chars().collect();
-    if h.len() < w.len() {
-        return None;
-    }
-    for i in 0..=(h.len() - w.len()) {
-        let slice: String = h[i..i + w.len()].iter().collect();
-        if slice.eq_ignore_ascii_case(word) {
-            let before_ok = i == 0 || h[i - 1] == ' ';
-            let after_ok = i + w.len() == h.len() || h[i + w.len()] == ' ';
-            if before_ok && after_ok {
-                return Some(i);
-            }
-        }
-    }
-    None
-}
-
-fn first_token(c: &[char]) -> String {
-    let s: String = c.iter().collect();
-    s.split_whitespace().next().unwrap_or("").to_string()
-}
-
-fn parse_table(lines: &[String]) -> Vec<Value> {
-    let di = match lines
-        .iter()
-        .position(|l| l.trim().len() >= 5 && l.trim().chars().all(|c| c == '-'))
-    {
-        Some(i) if i >= 1 => i,
-        _ => return vec![],
-    };
-    let header: Vec<char> = lines[di - 1].chars().collect();
-    let id_i = match find_word(&header, "id") {
-        Some(i) => i,
-        None => return vec![],
-    };
-    let ver_i = find_word(&header, "version");
-    let mut res = vec![];
-    for l in lines.iter().skip(di + 1) {
-        if res.len() >= 15 {
-            break;
-        }
-        let c: Vec<char> = l.chars().collect();
-        if c.len() <= id_i {
-            continue;
-        }
-        let name: String = c[..id_i].iter().collect::<String>().trim().to_string();
-        let (id, ver) = match ver_i {
-            Some(v) if v > id_i && c.len() > v => (
-                c[id_i..v].iter().collect::<String>().trim().to_string(),
-                first_token(&c[v..]),
-            ),
-            _ => (first_token(&c[id_i..]), String::new()),
-        };
-        if valid_id(&id) {
-            res.push(json!({ "id": id, "nm": name, "ver": ver }));
-        }
-    }
-    res
-}
-
-fn winget_version() -> Option<String> {
-    winget_command()
-        .ok()?
-        .arg("--version")
-        .output()
-        .ok()
-        .filter(|o| o.status.success())
-        .map(|o| String::from_utf8_lossy(&o.stdout).trim().to_string())
 }
 
 fn elevation() -> &'static str {
@@ -814,6 +665,16 @@ async fn ai_validate(raw: String, sources: Vec<Value>) -> Result<Value, String> 
     validate_quotes(&raw, &trusted)
 }
 
+#[tauri::command]
+fn cli_terminal_status(app: tauri::AppHandle) -> Value {
+    terminal::status(&app)
+}
+
+#[tauri::command]
+fn open_cli_terminal(app: tauri::AppHandle) -> Result<Value, String> {
+    terminal::launch(&app)
+}
+
 pub fn run() {
     tauri::Builder::default()
         .manage(AppState::default())
@@ -830,7 +691,9 @@ pub fn run() {
             open,
             ai_models,
             ai_recommend,
-            ai_validate
+            ai_validate,
+            cli_terminal_status,
+            open_cli_terminal
         ])
         .run(tauri::generate_context!())
         .expect("Fehler beim Start von Appmenu");
