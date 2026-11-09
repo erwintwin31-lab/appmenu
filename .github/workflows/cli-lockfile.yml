@@ -1,0 +1,49 @@
+name: Generate CLI lockfile
+on:
+  push:
+    branches: [feat/standalone-cli-review]
+    paths:
+      - '.github/workflows/cli-lockfile.yml'
+      - 'cli/Cargo.toml'
+permissions:
+  contents: read
+concurrency:
+  group: appmenu-cli-lockfile-review
+  cancel-in-progress: false
+jobs:
+  lockfile:
+    if: github.repository == 'erwintwin31-lab/appmenu' && github.ref == 'refs/heads/feat/standalone-cli-review'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: refs/heads/feat/standalone-cli-review
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Generate lockfile with Cargo
+        run: cargo generate-lockfile --manifest-path cli/Cargo.toml
+      - name: Fetch locked dependencies and verify package downloads
+        run: cargo fetch --locked --manifest-path cli/Cargo.toml
+      - name: Preserve generated lockfile as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: appmenu-cli-cargo-lock
+          path: cli/Cargo.lock
+          if-no-files-found: error
+      - name: Commit only CLI lockfile to review branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git branch --show-current)" = 'feat/standalone-cli-review'
+          git diff --exit-code -- cli/Cargo.toml
+          git add -- cli/Cargo.lock
+          if git diff --cached --quiet -- cli/Cargo.lock; then
+            echo 'CLI lockfile is already up to date.'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'build(cli): generate verified Cargo.lock' -- cli/Cargo.lock
+          git push origin HEAD:refs/heads/feat/standalone-cli-review

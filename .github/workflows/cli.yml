@@ -1,0 +1,27 @@
+name: Standalone CLI
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  cli:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-22.04, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: cli
+      - run: cargo build --locked --manifest-path cli/Cargo.toml
+      - run: cargo test --locked --manifest-path cli/Cargo.toml
+      - run: cargo clippy --locked --manifest-path cli/Cargo.toml --all-targets -- -D warnings
